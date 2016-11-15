@@ -6,7 +6,7 @@ define USAGE
 
 Usage:
 
-  make -f <makefile> [help|$(PROG)|test|tags] \$(eval)
+  make -f <makefile> [help|test|edit|netcdf|tags] \$(eval)
       [PETSC_DIR=...] [NETCDF_DIR=...] [MPIEXEC=...]
 
 endef
