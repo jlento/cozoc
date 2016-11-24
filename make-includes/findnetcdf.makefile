@@ -4,7 +4,6 @@ NETCDF_DIR != $(PKG_CONFIG) --variable=prefix netcdf
 
 ifeq ($(NETCDF_DIR),)
   $(call cwarning,Netcdf root directory NETCDF_DIR -- undefined)
-  undefine DEFINE_PARALLEL_NETCDF
 else
   $(call cinfo,-- Netcdf root directory NETCDF_DIR -- $(NETCDF_DIR))
 endif
