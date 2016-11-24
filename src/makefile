@@ -6,6 +6,9 @@ PKG_CONFIG  = PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --silence-errors
 include $(SRCDIR)/../make-includes/constants.makefile
 include $(SRCDIR)/../make-includes/findpetsc.makefile
 include $(SRCDIR)/../make-includes/findnetcdf.makefile
+ifndef DEFINE_PARALLEL_NETCDF
+    $(call cerror,No usable Netcdf found. Set NETCDF_DIR?)
+endif
 
 NETCDF_INCS != $(PKG_CONFIG) --cflags netcdf
 NETCDF_LIBS != $(PKG_CONFIG) --libs netcdf
@@ -52,3 +55,26 @@ omega.d : omega_stencil.inc
 
 $(SRCDIR)/omega_stencil.inc : omega_stencil.py
 	python $< > $@
+
+
+
+# Configure (generate config.h) with make
+
+config.h :
+	$(file >config.h,$(config-current))
+	$(info -- Wrote config.h)
+
+define config-current
+#ifndef CONFIG_H
+#define CONFIG_H
+
+$(DEFINE_PARALLEL_NETCDF)
+
+#endif /* CONFIG_H */
+endef
+
+ifneq ($(strip $(config-current)),$(strip $(shell cat config.h 2>&-)))
+    $(shell rm -f config.h)
+endif
+
+
