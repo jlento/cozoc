@@ -12,11 +12,18 @@ GREEN  != tput setaf 2
 YELLOW != tput setaf 3
 RESET  != tput sgr0
 
+ifeq ($(filter s,$(MAKEFLAGS)),)
+    undefine SILENT
+else
+    SILENT = 1
+endif
+
+
 # Functions
 
 cerror = $(error $(RED)$1$(RESET))
 
-ifeq ($(filter s,$(MAKEFLAGS)),)
+ifndef SILENT
     cwarning = $(warning $(YELLOW)$1$(RESET))
     cinfo    = $(info $(GREEN)$1$(RESET))
 else
