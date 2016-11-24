@@ -24,6 +24,7 @@
       apt: name={{item}} update_cache=yes cache_valid_time=3600
       with_items:
         - gcc
+        - pkg-config
         - petsc-dev
         - python-sympy
         - cmake
