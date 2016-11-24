@@ -6,9 +6,6 @@ PKG_CONFIG  = PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --silence-errors
 include $(SRCDIR)/../make-includes/constants.makefile
 include $(SRCDIR)/../make-includes/findpetsc.makefile
 include $(SRCDIR)/../make-includes/findnetcdf.makefile
-ifndef DEFINE_PARALLEL_NETCDF
-    $(call cerror,No usable Netcdf found. Set NETCDF_DIR?)
-endif
 
 NETCDF_INCS != $(PKG_CONFIG) --cflags netcdf
 NETCDF_LIBS != $(PKG_CONFIG) --libs netcdf
@@ -68,7 +65,7 @@ define config-current
 #ifndef CONFIG_H
 #define CONFIG_H
 
-$(DEFINE_PARALLEL_NETCDF)
+#$(if $(USE_PARALLEL_NETCDF),define,undef) USE_PARALLEL_NETCDF
 
 #endif /* CONFIG_H */
 endef
