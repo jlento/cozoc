@@ -15,10 +15,10 @@ endef
 .PHONY : all help clean test tags edit netcdf
 
 
-# Regular trgets
+# Regular targets
 
-all :
-	$(MAKE) -f $(ROOTDIR)/src/makefile PROG=$(PROG)
+all tags :
+	$(MAKE) -f $(ROOTDIR)/src/makefile $@ PROG=$(PROG)
 
 help :
 	@:$(info $(USAGE))
@@ -45,14 +45,6 @@ endif
 
 $(notdir $(INPUT_URL)) :
 	wget -O $@ $(INPUT_URL)
-
-
-# GTAGS
-
-tags :
-	ln -sfT $(PETSC_DIR)/include $(ROOTDIR)/src/petsc-includes
-	ln -sfT $(NETCDF_DIR)/include $(ROOTDIR)/src/netcdf-includes
-	cd $(ROOTDIR)/src; gtags
 
 
 # Emacs IDE

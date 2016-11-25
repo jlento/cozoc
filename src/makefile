@@ -30,7 +30,7 @@ vpath %.h $(SRCDIR)
 vpath %.py $(SRCDIR)
 vpath %.inc $(SRCDIR)
 
-.PHONY : all
+.PHONY : all tags
 
 all : $(PROG)
 
@@ -46,7 +46,9 @@ $(PROG) : $(OBJ)
          sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
          rm -f $@.$$$$
 
+ifneq ($(MAKECMDGOALS),tags)
 include $(SRC:.c=.d)
+endif
 
 omega.d : omega_stencil.inc
 
@@ -54,12 +56,19 @@ $(SRCDIR)/omega_stencil.inc : omega_stencil.py
 	python $< > $@
 
 
+# GTAGS
+
+tags :
+	ln -sfT $(PETSC_DIR)/include $(SRCDIR)/petsc-includes
+	ln -sfT $(NETCDF_DIR)/include $(SRCDIR)/netcdf-includes
+	cd $(SRCDIR); gtags
+
 
 # Configure (generate config.h) with make
 
 config.h :
 	$(file >config.h,$(config-current))
-	$(info -- Wrote config.h)
+	$(if $(SILENT),,$(info -- Wrote config.h))
 
 define config-current
 #ifndef CONFIG_H
