@@ -15,7 +15,7 @@ RESET  != tput sgr0
 ifeq ($(filter s,$(MAKEFLAGS)),)
     undefine SILENT
 else
-    SILENT = 1
+    SILENT = @
 endif
 
 
@@ -23,12 +23,12 @@ endif
 
 cerror = $(error $(RED)$1$(RESET))
 
-ifndef SILENT
-    cwarning = $(warning $(YELLOW)$1$(RESET))
-    cinfo    = $(info $(GREEN)$1$(RESET))
-else
+ifdef SILENT
     cwarning =
     cinfo =
+else
+    cwarning = $(warning $(YELLOW)$1$(RESET))
+    cinfo    = $(info $(GREEN)$1$(RESET))
 endif
 
 _path_prepend = $(eval $2 := $(subst $(SPACE),:,$(strip $1 $($2))))
