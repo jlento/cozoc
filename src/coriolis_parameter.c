@@ -4,23 +4,6 @@
 #include "context.h"
 #include "utils.h"
 
-/* Coriollis parameter is taken to be a function of latitude, only */
-
-#undef __FUNCT__
-#define __FUNCT__ "coriolis_parameter_read"
-extern PetscErrorCode coriolis_parameter_read(Context ctx)
-{
-        size_t start[3] = {0, 0, 0}, count[3] = {1, ctx->my, 1};
-        int id;
-        PetscErrorCode ierr;
-
-        PetscFunctionBeginUser;
-        ierr = nc_inq_varid(ctx->ncid, "F", &id);ERR(ierr);
-        ierr = nc_get_vara_double(ctx->ncid,id,start,count,
-                                  ctx->Coriolis_parameter); ERR(ierr);
-        PetscFunctionReturn(0);
-}
-
 
 #undef __FUNCT__
 #define __FUNCT__ "coriolis_parameter_add"

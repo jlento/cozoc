@@ -7,12 +7,12 @@
 #include "daslice.h"
 #include "utils.h"
 #include "sigma_parameter.h"
-#include "coriolis_parameter.h"
 #include "vorticity.h"
 #include "derivatives.h"
 #include "wrfnc.h"
 
 static PetscErrorCode output_setup(Context ctx);
+
 
 #undef __FUNCT__
 #define __FUNCT__ "context_create"
@@ -88,23 +88,31 @@ extern PetscErrorCode context_create(const char *fname,int *eqns,
 
 
 
-/* These are read here because they do not depend on time */
+        /* These are read here because they do not depend on time */
 
-        {
-                int id;
-                size_t start[1] = {0};
-                size_t count[1] = {ctx->mz};
-                ierr = nc_inq_varid(ctx->ncid,fieldnames[Z],&id); ERR(ierr);
-                ierr = nc_get_vara_double(ctx->ncid,id,start,count,
-                                          ctx->Pressure); ERR(ierr);
+	/* Pressure levels (z-coordinate) */
+	{
+		size_t start[1] = {0};
+		size_t count[1] = {ctx->mz};
+		ierr = readArray(ctx->ncid,fieldnames[z],start,count,
+				 ctx->Pressure);
+		CHKERRQ(ierr);
+	}
 
-        }
-        ierr = coriolis_parameter_read(ctx); CHKERRQ(ierr);
-        ierr = nc_get_att_double(ctx->ncid,NC_GLOBAL,"DX",&ctx->hx); ERR(ierr);
-        ierr = nc_get_att_double(ctx->ncid,NC_GLOBAL,"DY",&ctx->hy); ERR(ierr);
-        //ierr = VecGetArray(ctx->p,&p); CHKERRQ(ierr);
+	/* Coriollis parameter is taken to be a function of latitude, only */
+	{
+		size_t start[3] = {0,0,0};
+		size_t count[3] = {1,ctx->my,1};
+		ierr = readArray(ctx->ncid,fieldnames[F],start,count,
+				 ctx->Coriolis_parameter);
+		CHKERRQ(ierr);
+	}
+
+	/* Grid spacings */
+	ierr = readAttribute(ctx->ncid,"DX",&ctx->hx); ERR(ierr);
+        ierr = readAttribute(ctx->ncid,"DY",&ctx->hy); ERR(ierr);
         ctx->hz = ctx->Pressure[1] - ctx->Pressure[0];       /* hz is negative!!! */
-        //ierr = VecRestoreArray(ctx->p,&p); CHKERRQ(ierr);
+
 
         ierr = output_setup(ctx); CHKERRQ(ierr);
 

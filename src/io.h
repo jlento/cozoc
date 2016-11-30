@@ -25,6 +25,25 @@ extern PetscErrorCode read2D(const int ncid, const unsigned long time,
 extern PetscErrorCode readArray2D(const int ncid, const int time,
                                   const char *name,Array2D array);
 
+extern PetscErrorCode readAttribute(
+	const int    ncid,
+	const char  *name,
+	PetscScalar *attr);
+
+extern PetscErrorCode readArray1D(
+        const int            ncid,
+        const unsigned long  time,
+        const char          *varname,
+        const int            n,
+        PetscScalar         *a);
+
+extern PetscErrorCode readArray(
+        const int            ncid,
+        const char          *varname,
+        const size_t        *start,
+        const size_t        *count,
+        PetscScalar         *a);
+
 extern PetscErrorCode write3D(const int ncid, const unsigned long time, \
                               const char *varname, Vec v);
 

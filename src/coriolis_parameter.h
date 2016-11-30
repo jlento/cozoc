@@ -4,7 +4,6 @@
 #include "petscvec.h"
 #include "context.h"
 
-extern PetscErrorCode coriolis_parameter_read(Context ctx);
 extern PetscErrorCode coriolis_parameter_add(Vec x,Context ctx);
 
 
