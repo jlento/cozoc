@@ -3,4 +3,4 @@
 const char *dimnames[NDIMS] = {
         "time","vlevs","south_north","west_east"};
 
-const char *fieldnames[NFIELDS] = {"LEV"};
+const char *fieldnames[NFIELDS] = {"LEV","F"};
