@@ -2,12 +2,15 @@ static char help[] = ""
         "Solves quasi-geostrophic and generalized omega equations, and height\n"
         "tendency equations from WRF baroclinic test case data.\n"
         "\n"
-        "Usage: mpiexec [-n procs] ozoc [-f <fname>] [-h] [-t] [-Q] [-G] [-Z]\n"
+        "Usage: mpiexec [-n procs] ozoc [-f <fname>] [-h|-t|-Q|-G|-Z]\n"
+        "               [-s <n>] [-n <n>]\n"
         "\n"
         "Input file:\n"
         "  -f <fname>  Input file, NetCDF4/HDF5 format, from WRF simulation\n"
         "Mode:\n"
         "  -t          Run identity tests, only\n"
+        "  -s <n>      Skip <n> timesteps. Default: start from the first\n"
+        "  -n <n>      Process <n> timesteps, only. Default: all timesteps\n"
         "  -Q          Solve quasi-geostrophic omega equation, only\n"
         "  -G          Solve generalized omega equations, only\n"
         "  -Z          Solve height tendency equations (default), and\n"
@@ -21,19 +24,20 @@ static char help[] = ""
 #include "solve.h"
 
 static PetscErrorCode command_line_options(char *fname,PetscBool *idtestonly,
-                                           int *eqns);
+                                           int *skip,int *steps,int *eqns);
 
 int main(int argc,char **argv)
 {
         char            fname[PETSC_MAX_PATH_LEN] = "wrf.nc4";
         PetscBool       idtestonly = PETSC_FALSE;
         int             eqns;
+	PetscInt        skip = 0, steps;
         Context         ctx;
         PetscErrorCode  ierr;
 
         ierr = PetscInitialize(&argc,&argv,NULL,help);CHKERRQ(ierr);
 
-        ierr = command_line_options(fname,&idtestonly,&eqns);
+        ierr = command_line_options(fname,&idtestonly,&skip,&steps,&eqns);
 
         ierr = context_create(fname,&eqns,&ctx);CHKERRQ(ierr);
 
@@ -50,7 +54,7 @@ int main(int argc,char **argv)
 
 
 static PetscErrorCode command_line_options(char *fname,PetscBool *idtestonly,
-                                           int *eqns)
+                                           int *skip,int *steps,int *eqns)
 {
         struct {char *flg; char *desc; int bf;}
         eqn[] =
@@ -61,14 +65,21 @@ static PetscErrorCode command_line_options(char *fname,PetscBool *idtestonly,
                  {"-Z","Calculate height-tendency eq.",
                   HEIGHT_TENDENCY}};
         PetscErrorCode  ierr;
+	PetscBool       set;
 
         PetscFunctionBeginUser;
 
         ierr = PetscOptionsBegin(PETSC_COMM_WORLD,NULL,
-                                 "Options for ozoc",NULL);CHKERRQ(ierr);
+                                 "Options for COZOC",NULL);CHKERRQ(ierr);
 
         PetscOptionsBool("-t","Run identity tests, only",NULL,*idtestonly,
-                         idtestonly,NULL); PetscBool  set;
+                         idtestonly,NULL);
+
+	PetscOptionsInt("-s","Skip <n> timesteps",NULL,*skip,
+                         skip,NULL);
+
+	PetscOptionsInt("-n","Calculate <n> timesteps",NULL,*steps,
+                         steps,NULL);
 
         PetscOptionsString("-f","Input file, NetCDF4/HDF5 format, "
                            "from WRF simulation",NULL,fname,fname,
