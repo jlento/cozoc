@@ -17,7 +17,7 @@ PETSC_LIBS  != $(PKG_CONFIG) --libs PETSc
 
 CC     != $(PKG_CONFIG) --variable=ccompiler PETSc
 COPTS   = -g -pg -Wall -fbounds-check
-CFLAGS  = $(COPTS) -I$(SRCDIR) $(NETCDF_INCS) $(PETSC_INCS)
+CFLAGS  = $(COPTS) -I. -I$(SRCDIR) $(NETCDF_INCS) $(PETSC_INCS)
 LDFLAGS = $(NETCDF_LIBS) $(PETSC_LIBS)
 
 SRC     = cozoc.c context.c idtest.c solve.c omegaQG.c omega.c io.c vecops.c \
