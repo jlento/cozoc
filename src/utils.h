@@ -11,3 +11,5 @@
 extern PetscErrorCode norm2_and_absmax(const char *name,Vec x);
 
 #endif
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0])
