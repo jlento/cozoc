@@ -1,7 +1,6 @@
 #include "omegaQG.h"
 #include "petscksp.h"
 #include "petscdmda.h"
-#include "netcdf.h"
 #include <math.h>
 #include "context.h"
 #include "arrays.h"

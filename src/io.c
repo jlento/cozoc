@@ -6,6 +6,7 @@
 #include "arrays.h"
 #include "utils.h"
 #include "loops.h"
+#include "wrfnc.h"
 #include "config.h"
 
 extern PetscErrorCode ncfile_open(const char *wrfin,int *ncid)
@@ -20,6 +21,24 @@ extern PetscErrorCode ncfile_open(const char *wrfin,int *ncid)
 	ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);
 	if (rank == 0) {
 		ierr = nc_open(wrfin,NC_NETCDF4|NC_WRITE,ncid);ERR(ierr);
+	}
+#endif
+        PetscFunctionReturn(0);
+}
+
+
+extern PetscErrorCode file_close(int ncid)
+{
+        PetscErrorCode ierr;
+        PetscFunctionBeginUser;
+#ifndef USE_PARALLEL_NETCDF
+	PetscMPIInt rank;
+	ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);
+	if (rank == 0) {
+#endif
+		ierr = nc_close(ncid);ERR(ierr);
+
+#ifndef USE_PARALLEL_NETCDF
 	}
 #endif
         PetscFunctionReturn(0);
@@ -47,6 +66,69 @@ extern PetscErrorCode ncfile_get_dimsize(const int ncid,const char *dimname,
 #endif
         PetscFunctionReturn(0);
 }
+
+
+PetscErrorCode file_redef(const int ncid)
+{
+        PetscErrorCode ierr;
+        PetscFunctionBeginUser;
+#ifndef USE_PARALLEL_NETCDF
+	PetscMPIInt rank;
+	ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);
+	if (rank == 0) {
+#endif
+		ierr = nc_redef(ncid);ERR(ierr);
+
+#ifndef USE_PARALLEL_NETCDF
+	}
+#endif
+        PetscFunctionReturn(0);
+}
+
+
+PetscErrorCode file_enddef(const int ncid)
+{
+        PetscErrorCode ierr;
+        PetscFunctionBeginUser;
+#ifndef USE_PARALLEL_NETCDF
+	PetscMPIInt rank;
+	ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);
+	if (rank == 0) {
+#endif
+		ierr = nc_enddef(ncid);ERR(ierr);
+
+#ifndef USE_PARALLEL_NETCDF
+	}
+#endif
+        PetscFunctionReturn(0);
+}
+
+
+PetscErrorCode file_def_var(const int ncid,const char *name)
+{
+	int dimids[4];
+        PetscErrorCode ierr;
+        PetscFunctionBeginUser;
+#ifndef USE_PARALLEL_NETCDF
+	PetscMPIInt rank;
+	ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);
+	if (rank == 0) {
+#endif
+		for(int i = 0; i < NDIMS; i++) {
+			ierr = nc_inq_dimid(ncid,dimnames[i],
+					    &dimids[i]);ERR(ierr);
+		}
+
+                ierr = nc_def_var(ncid,"ome_v",NC_FLOAT,
+                                  NDIMS,dimids,0);
+
+#ifndef USE_PARALLEL_NETCDF
+	}
+#endif
+        PetscFunctionReturn(0);
+}
+
+
 
 PetscErrorCode readAttribute(
 	const int    ncid,

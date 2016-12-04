@@ -1,5 +1,4 @@
 #include "coriolis_parameter.h"
-#include "netcdf.h"
 #include "petscdmda.h"
 #include "context.h"
 #include "utils.h"

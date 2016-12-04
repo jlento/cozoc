@@ -1,8 +1,6 @@
 #include "context.h"
 #include "petscksp.h"
 #include "petscdmda.h"
-#include "netcdf.h"
-#include "netcdf_par.h"
 #include "io.h"
 #include "daslice.h"
 #include "utils.h"
@@ -109,8 +107,8 @@ extern PetscErrorCode context_create(const char *fname,int *eqns,
 	}
 
 	/* Grid spacings */
-	ierr = readAttribute(ctx->ncid,"DX",&ctx->hx); ERR(ierr);
-        ierr = readAttribute(ctx->ncid,"DY",&ctx->hy); ERR(ierr);
+	ierr = readAttribute(ctx->ncid,"DX",&ctx->hx); CHKERRQ(ierr);
+        ierr = readAttribute(ctx->ncid,"DY",&ctx->hy); CHKERRQ(ierr);
         ctx->hz = ctx->Pressure[1] - ctx->Pressure[0];       /* hz is negative!!! */
 
 
@@ -140,7 +138,7 @@ extern PetscErrorCode context_destroy(Context *p_ctx)
 
         ierr = KSPDestroy(&ctx->ksp);CHKERRQ(ierr);
         ierr = DMDestroy(&ctx->da);CHKERRQ(ierr);
-        ierr = nc_close(ctx->ncid);ERR(ierr);
+        ierr = file_close(ctx->ncid);CHKERRQ(ierr);
         free(ctx);
 
         PetscFunctionReturn(0);
@@ -183,28 +181,18 @@ extern PetscErrorCode context_destroy(Context *p_ctx)
 
 static PetscErrorCode output_setup(Context ctx)
 {
-        const int ndims = 4;
-        int ds[4];
-
         PetscErrorCode ierr;
 
         PetscFunctionBeginUser;
-        for(int i = 0; i < ndims; i++) {
-                ierr = nc_inq_dimid(ctx->ncid,dimnames[i],&ds[i]);ERR(ierr);
-        }
-        ierr = nc_redef(ctx->ncid);ERR(ierr);
-        if (ctx->eqns & OMEGA_QUASI_GEOSTROPHIC) {
-                int varid;
-                ierr = nc_def_var(ctx->ncid,"ome_v_qg",NC_FLOAT,
-                                  ndims,ds,&varid);
-                if (ierr != NC_ENAMEINUSE) ERR(ierr);
-        }
+
+	ierr = file_redef(ctx->ncid);CHKERRQ(ierr);
+	if (ctx->eqns & OMEGA_QUASI_GEOSTROPHIC) {
+                ierr = file_def_var(ctx->ncid,"ome_v_qg");
+	}
         if (ctx->eqns & OMEGA_GENERALIZED) {
-                int varid;
-                ierr = nc_def_var(ctx->ncid,"ome_v",NC_FLOAT,
-                                  ndims,ds,&varid);
-                if (ierr != NC_ENAMEINUSE) ERR(ierr);
+                ierr = file_def_var(ctx->ncid,"ome_v");
         }
-        ierr = nc_enddef(ctx->ncid);ERR(ierr);
-        PetscFunctionReturn(0);
+        ierr = file_enddef(ctx->ncid);CHKERRQ(ierr);
+
+	PetscFunctionReturn(0);
 }
