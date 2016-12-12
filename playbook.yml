@@ -1,30 +1,62 @@
 ---
 - hosts: all
-  become: true
 
   tasks:
 
     - name: System update
+      become: true
       apt: upgrade=dist update_cache=yes cache_valid_time=3600
 
-    - name: COZOC development tools
+    - name: Development tools
+      become: true
       apt: name={{item}} update_cache=yes cache_valid_time=3600
       with_items:
         - synaptic
         - git
         - gnuplot5
         - emacs
-        - global
-        - python-pygments
-        - elpa-helm
         - m4
         - ncview
+        - netcdf-bin
+        - petsc3.6.2-doc
 
     - name: COZOC requirements
-      apt: name={{item}} update_cache=yes cache_valid_time=3600
+      become: true
+      apt: name="{{item}}" update_cache=yes cache_valid_time=3600
       with_items:
         - gcc
         - pkg-config
         - petsc-dev
+        - libnetcdf-dev
         - python-sympy
         - cmake
+
+    - name: Create user font directory
+      file:
+        path: "{{ansible_env.HOME}}/.fonts"
+        state: directory
+    - name: Get Source Code Pro fonts
+      get_url:
+        url: https://github.com/downloads/adobe/source-code-pro/SourceCodePro_FontsOnly-1.010.zip
+        dest: "{{ansible_env.HOME}}/.fonts/SCP.zip"
+    - name: Unpack Source Code Pro fonts
+      unarchive:
+        src: "{{ansible_env.HOME}}/.fonts/SCP.zip"
+        dest: "{{ansible_env.HOME}}/.fonts"
+        remote_src: yes
+        creates: "{{ansible_env.HOME}}/.fonts/SourceCodePro_FontsOnly-1.010"
+
+    - name: Update font cache
+      shell: fc-list | grep -q "Source Code Pro" || fc-cache -f
+      args:
+        creates: "{{ansible_env.HOME}}/.fonts/SourceCodePro_FontsOnly-1.010/OTF/SourceCodePro-Regular.otf"
+
+    - name: Clone Spacemacs
+      git:
+        repo: https://github.com/syl20bnr/spacemacs.git
+        dest: "{{ansible_env.HOME}}/.emacs.d"
+    - name: Symlink Spacemacs config
+      file:
+        src: /vagrant/.spacemacs
+        dest: "{{ansible_env.HOME}}/.spacemacs"
+        state: link
