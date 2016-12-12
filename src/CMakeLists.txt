@@ -1,4 +1,4 @@
-include_directories (${PETSC_INCLUDE_DIRS} ${NETCDF_INCLUDE_DIRS})
+include_directories (${PROJECT_BINARY_DIR}/src ${PETSC_INCLUDE_DIRS} ${NETCDF_INCLUDE_DIRS})
 link_directories (${PETSC_LIBRARY_DIRS} ${NETCDF_LIBRARY_DIRS})
 link_libraries (${PETSC_LIBRARIES} ${NETCDF_LIBRARIES})
 
