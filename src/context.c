@@ -1,6 +1,6 @@
 #include "context.h"
-#include "petscksp.h"
-#include "petscdmda.h"
+#include <petscksp.h>
+#include <petscdmda.h>
 #include "io.h"
 #include "daslice.h"
 #include "utils.h"
@@ -28,17 +28,17 @@ extern PetscErrorCode context_create(const char *fname,int *eqns,
 
 /* Open Input/output file and read the dimensions */
 
-        ierr = ncfile_open(fname,&ctx->ncid);CHKERRQ(ierr);
-        ierr = ncfile_get_dimsize(ctx->ncid,dimnames[XDIM],&ctx->mx);
+        ierr = file_open(fname,&ctx->ncid);CHKERRQ(ierr);
+        ierr = file_get_dimsize(ctx->ncid,dimnames[XDIM],&ctx->mx);
         CHKERRQ(ierr);
-        ierr = ncfile_get_dimsize(ctx->ncid,dimnames[YDIM],&ctx->my);
+        ierr = file_get_dimsize(ctx->ncid,dimnames[YDIM],&ctx->my);
         CHKERRQ(ierr);
-        ierr = ncfile_get_dimsize(ctx->ncid,dimnames[ZDIM],&ctx->mz);
+        ierr = file_get_dimsize(ctx->ncid,dimnames[ZDIM],&ctx->mz);
         CHKERRQ(ierr);
-        ierr = ncfile_get_dimsize(ctx->ncid,dimnames[TIME],&ctx->mt);
+        ierr = file_get_dimsize(ctx->ncid,dimnames[TIME],&ctx->mt);
         CHKERRQ(ierr);
 
-/* Set up the distributed 3D array layout for scalar and 2-component fields */
+        /* Set up the distributed 3D array layout for 1- and 2-component fields */
 
         ierr = DMDACreate3d(PETSC_COMM_WORLD,DM_BOUNDARY_PERIODIC,
                             DM_BOUNDARY_NONE, DM_BOUNDARY_NONE,
@@ -187,8 +187,7 @@ static PetscErrorCode output_setup(Context ctx)
 
 	ierr = file_redef(ctx->ncid);CHKERRQ(ierr);
 	if (ctx->eqns & OMEGA_QUASI_GEOSTROPHIC) {
-                ierr = file_def_var(ctx->ncid,"ome_v_qg");
-	}
+                ierr = file_def_var(ctx->ncid,"ome_v_qg");}
         if (ctx->eqns & OMEGA_GENERALIZED) {
                 ierr = file_def_var(ctx->ncid,"ome_v");
         }

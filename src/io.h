@@ -12,15 +12,13 @@
 #define ERR(e) if (e) {printf("%s[%d]: %s: Error: %s\n", __FILE__, __LINE__, __func__, nc_strerror(e)); exit(ERRCODE);}
 
 
-extern PetscErrorCode ncfile_open(const char *wrfin,int *ncid);
+extern PetscErrorCode file_open(const char *wrfin,int *ncid);
 extern PetscErrorCode file_close(const int ncid);
 extern PetscErrorCode file_redef(const int ncid);
 extern PetscErrorCode file_enddef(const int ncid);
 extern PetscErrorCode file_def_var(const int ncid,const char *name);
-
-
-extern PetscErrorCode ncfile_get_dimsize(const int ncid,const char *dimname,
-                                         size_t *dimsize);
+extern PetscErrorCode file_get_dimsize(const int ncid,const char *dimname,
+                                       size_t *dimsize);
 
 /* Read 3d (lev,lat,lon) slice from 4d NetCDF array (Time,lev,lat,lon) */
 extern PetscErrorCode read3D(const int ncid, const unsigned long time,
