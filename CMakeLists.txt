@@ -8,6 +8,7 @@ control where the libraries are searched first, with
 'export PKG_CONFIG_PATH=\"\${NETCDF_DIR}/lib/pkgconfig\"', for example.
 ")
 
+find_package(MPI)
 find_package (PkgConfig)
 pkg_check_modules (PKG_CONFIG_PETSC PETSc netcdf)
 

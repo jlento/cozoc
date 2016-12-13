@@ -1,0 +1,3 @@
+[submodule "atilaneves"]
+	path = atilaneves
+	url = https://github.com/atilaneves/cmake_modules.git
