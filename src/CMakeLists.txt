@@ -1,29 +1,31 @@
+include (ide_support)
+include (netcdf)
+
+find_package (MPI)
+find_package (PETSC)
+find_package (NETCDF)
+
+find_netcdf_par_h ()
+
+set (CMAKE_C_COMPILER ${MPI_C_COMPILER})
+
 include_directories (
-  ${PROJECT_BINARY_DIR}/src
-  ${PETSC_INCLUDE_DIRS}
-  ${NETCDF_INCLUDE_DIRS})
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${PETSC_INCLUDE_DIR}
+  ${NETCDF_INCLUDE_DIR} )
 
-link_directories (${PETSC_LIBRARY_DIRS} ${NETCDF_LIBRARY_DIRS})
+link_libraries (
+  ${PETSC_LIBRARY}
+  ${NETCDF_LIBRARY} )
 
-link_libraries (${PETSC_LIBRARIES} ${NETCDF_LIBRARIES})
+configure_file (
+  ${CMAKE_CURRENT_SOURCE_DIR}/config.h.in
+  ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+
+write_dir_locals ()
+write_clang_complete_cflags ()
 
 add_executable (cozoc arrays.c constants.c context.c coriolis_parameter.c
   cozoc.c daslice.c derivatives.c idtest.c io.c omega.c omegaQG.c
   sigma_parameter.c solve.c utils.c vecops.c vorticity.c wrfnc.c)
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in
-  ${CMAKE_CURRENT_BINARY_DIR}/config.h)
-
-function (write_clang_complete_cflags)
-  get_directory_property (includes INCLUDE_DIRECTORIES)
-  get_directory_property (definitions COMPILE_DEFINITIONS)
-  if (includes)
-    string (REPLACE ";" "\n-I" includes "-I${includes}")
-  endif ()
-  if (definitions)
-    string (REPLACE ";" "\n-D" definitions "-I${definitions}")
-  endif ()
-  file (WRITE "${CMAKE_SOURCE_DIR}/.clang_complete" "${includes}\n${definitions}")
-endfunction ()
-
-write_clang_complete_cflags ()

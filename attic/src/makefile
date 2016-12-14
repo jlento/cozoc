@@ -40,7 +40,7 @@ $(PROG) : $(OBJ)
 %.o : %.c
 	$(CC) -c $(CFLAGS) $<
 
-%.d : %.c
+%.d : %.c | config.h
 	set -e; rm -f $@; \
          $(CC) -MM $(CFLAGS) $< > $@.$$$$; \
          sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \

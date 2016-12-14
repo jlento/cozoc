@@ -1,10 +1,8 @@
 *~
-gmon.out
-*.nc
-*.o
-*.mod
 build/*
 .vagrant
-G*
-petsc-includes
-netcdf-includes
+.dir-locals.el
+.clang_complete
+playbook.retry
+ubuntu-xenial-16.04-cloudimg-console.log
+
