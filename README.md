@@ -41,7 +41,8 @@ environments through environment module system. For example, in Cray
 XC40, the systems commands
 
     module swap PrgEnv-cray PrgEnv-gnu
-    module load cray-petsc cray-hdf5-parallel cray-netcdf-hdf5parallel
+    module load cmake cray-petsc
+    module load cray-hdf5-parallel cray-netcdf-hdf5parallel
 
 are enough to prepare the environment for building COZOC.
 
@@ -127,12 +128,6 @@ The parallel version of Netcdf4/HDF5 is already provided, so:
     module swap PrgEnv-gnu/5.2.82 PrgEnv-gnu
     module load cray-petsc cray-hdf5-parallel cray-netcdf-hdf5parallel
     make -f ../cozoc/makefile test MPIEXEC=aprun
-
-
-Build with cmake
-----------------------------
-
-...on the way...
 
 
 TODO:
