@@ -1,43 +1,35 @@
-#include "petscdmda.h"
+#include <mpi.h>
+#include <petscdmda.h>
 
-extern PetscErrorCode create_subdm_plane(DMDADirection dir,DM da,DM *dap)
-{
-        MPI_Comm comm,mycomm;
-        DMBoundaryType bm,bn,bp,b1,b2;
-        PetscInt dim,M,N,P,m,n,p,dof,s,N1,N2,n1,n2,n3;
-        const PetscInt *lm,*ln,*lp,*l1,*l2,*l3;
-        DMDAStencilType st;
-        PetscErrorCode ierr;
-        ierr = DMDAGetInfo(da,&dim,&M,&N,&P,&m,&n,&p,&dof,&s,&bm,&bn,&bp,&st);
-        CHKERRQ(ierr);
-        ierr = DMDAGetOwnershipRanges(da,&lm,&ln,&lp); CHKERRQ(ierr);
-        switch (dir) {
-        case DMDA_X :
-                b1 = bn; b2 = bp;
-                N1 = N; N2 = P;
-                n1 = n; n2 = p; n3 = m;
-                l1 = ln; l2 = lp; l3 = lm;
-                break;
-        case DMDA_Y :
-                b1 = bm; b2 = bp;
-                N1 = M; N2 = P;
-                n1 = m; n2 = p; n3 = n;
-                l1 = lm; l2 = lp; l3 = ln;
-                break;
-        case DMDA_Z :
-                b1 = bm; b2 = bn;
-                N1 = M; N2 = N;
-                n1 = m; n2 = n; n3 = p;
-                l1 = lm; l2 = ln; l3 = lp;
-                break;
-        }
-        for (int j = 0, i = 0; i < n3; i++) {
-                ierr = DMDAGetProcessorSubset(da,dir,j,&comm); CHKERRQ(ierr);
-                if (comm != MPI_COMM_NULL)
-                        mycomm = comm;
-                j += l3[i];
-        }
-        ierr = DMDACreate2d(mycomm,b1,b2,st,N1,N2,n1,n2,dof,s,l1,l2,dap);
-        CHKERRQ(ierr);
-        PetscFunctionReturn(0);
-}
+PetscErrorCode create_subdm_plane (DMDADirection direction, DM da, DM *dap) {
+    MPI_Comm        newcomm;
+    DMBoundaryType  bm, bn, bp;
+    PetscInt        dim, M, N, P, m, n, p, dof, s;
+    const PetscInt *lm, *ln, *lp;
+    DMDAStencilType st;
+    int             color, rank;
+    MPI_Comm_rank (PETSC_COMM_WORLD, &rank);
+    DMDAGetInfo (da, &dim, &M, &N, &P, &m, &n, &p, &dof, &s, &bm, &bn, &bp,
+                 &st);
+    DMDAGetOwnershipRanges (da, &lm, &ln, &lp);
+
+    switch (direction) {
+    case DMDA_X:
+        DMDAGetCorners (da, &color, 0, 0, 0, 0, 0);
+        MPI_Comm_split (PETSC_COMM_WORLD, color, rank, &newcomm);
+        DMDACreate2d (newcomm, bn, bp, st, N, P, n, p, dof, s, ln, lp, dap);
+        break;
+
+    case DMDA_Y:
+        DMDAGetCorners (da, 0, &color, 0, 0, 0, 0);
+        MPI_Comm_split (PETSC_COMM_WORLD, color, rank, &newcomm);
+        DMDACreate2d (newcomm, bm, bp, st, M, P, m, p, dof, s, lm, lp, dap);
+        break;
+
+    case DMDA_Z:
+        DMDAGetCorners (da, 0, 0, &color, 0, 0, 0);
+        MPI_Comm_split (PETSC_COMM_WORLD, color, rank, &newcomm);
+        DMDACreate2d (newcomm, bm, bn, st, M, N, m, n, dof, s, lm, ln, dap);
+        break; }
+
+    return (0); }

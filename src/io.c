@@ -1,17 +1,15 @@
-#include "arrays.h"
 #include "config.h"
 #include "io.h"
-#include "loops.h"
 #include "netcdf.h"
 #ifdef USE_PARALLEL_NETCDF
 #include "netcdf_par.h"
 #endif
 #include "petscdmda.h"
-#include "utils.h"
 #include "wrfnc.h"
 #include <strings.h>
 
 /* If linked against sequential Netcdf4, only MPI rank 0 performs file I/O */
+
 
 PetscErrorCode file_open(const char *wrfin, int *ncid) {
 #ifdef USE_PARALLEL_NETCDF
@@ -24,6 +22,7 @@ PetscErrorCode file_open(const char *wrfin, int *ncid) {
 #endif
     return (0); }
 
+
 PetscErrorCode file_close(int ncid) {
 #ifdef USE_PARALLEL_NETCDF
     nc_close(ncid);
@@ -33,6 +32,7 @@ PetscErrorCode file_close(int ncid) {
     if (rank == 0) nc_close(ncid);
 #endif
     return (0); }
+
 
 PetscErrorCode file_get_dimsize(const int ncid, const char *dimname,
                                 size_t *dimsize) {
@@ -50,6 +50,7 @@ PetscErrorCode file_get_dimsize(const int ncid, const char *dimname,
 #endif
     return (0); }
 
+
 PetscErrorCode file_redef(const int ncid) {
 #ifdef USE_PARALLEL_NETCDF
     nc_redef(ncid);
@@ -59,6 +60,7 @@ PetscErrorCode file_redef(const int ncid) {
     if (rank == 0) nc_redef(ncid);
 #endif
     return (0); }
+
 
 PetscErrorCode file_enddef(const int ncid) {
 #ifdef USE_PARALLEL_NETCDF
@@ -70,22 +72,24 @@ PetscErrorCode file_enddef(const int ncid) {
 #endif
     return (0); }
 
+
 PetscErrorCode file_def_var(const int ncid, const char *name) {
     int dimids[4];
 #ifdef USE_PARALLEL_NETCDF
     for (int i = 0; i < NDIMS; i++) nc_inq_dimid(ncid, dimnames[i], &dimids[i]);
-    nc_def_var(ncid, "ome_v", NC_FLOAT, NDIMS, dimids, 0);
+    nc_def_var(ncid, name, NC_FLOAT, NDIMS, dimids, 0);
 #else
     PetscMPIInt rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
     if (rank == 0) {
         for (int i = 0; i < NDIMS; i++)
             nc_inq_dimid(ncid, dimnames[i], &dimids[i]);
-        nc_def_var(ncid, "ome_v", NC_FLOAT, NDIMS, dimids, 0); }
+        nc_def_var(ncid, name, NC_FLOAT, NDIMS, dimids, 0); }
 #endif
     return (0); }
 
-PetscErrorCode readAttribute(const int ncid, const char *name,
+
+PetscErrorCode file_read_attribute(const int ncid, const char *name,
                              PetscScalar *attr) {
 #ifdef USE_PARALLEL_NETCDF
     nc_get_att_double(ncid, NC_GLOBAL, name, attr);
@@ -103,6 +107,7 @@ int _read3D(const int ncid, const char *varname, const size_t start[4],
     nc_inq_varid(ncid, varname, &id);
     nc_get_vara_double(ncid, id, start, count, a);
     return (0); }
+
 
 PetscErrorCode read3D(const int ncid, const unsigned long time,
                       const char *varname, Vec v) {
@@ -294,25 +299,7 @@ extern PetscErrorCode readArray1D(const int ncid, const unsigned long time,
 
     PetscFunctionReturn(0); }
 
-/*
-  #undef __FUNCT__
-  #define __FUNCT__ "readArray2D"
-  extern PetscErrorCode readArray2D(const int ncid, const int time,
-  const char *name,Array2D a)
-  {
-  size_t start[] = {time,a.ys,a.xs}, count[] = {1,a.ym,a.xm};
-  int id;
-  PetscErrorCode ierr;
 
-  PetscFunctionBeginUser;
-  ierr = nc_inq_varid(ncid,name,&id); ERR(ierr);
-  ierr = nc_get_vara_double(ncid,id,start,count,a.data);ERR(ierr);
-  PetscFunctionReturn(0);
-  }
-*/
-
-#undef __FUNCT__
-#define __FUNCT__ "write3D"
 extern PetscErrorCode write3D(const int ncid, const unsigned long time,
                               const char *varname, Vec v) {
     DM             da;

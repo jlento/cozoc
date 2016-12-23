@@ -4,27 +4,25 @@
 #include "loops.h"
 #include "constants.h"
 
-#undef __FUNCT__
-#define __FUNCT__ "sigma_parameter"
 extern PetscErrorCode sigma_parameter(Context ctx)
 {
         DM                da       = ctx->da;
         PetscScalar       hz       = ctx->hz;
         PetscScalar      *p        = ctx->Pressure;
-        Vec               Tvec     = ctx->T;
+        Vec               Tvec     = ctx->Temperature;
         Vec               sigmavec = ctx->Sigma_parameter;
+        const double R   = Specific_gas_constant_of_dry_air;
+        const double c_p = Specific_heat_of_dry_air;
         PetscScalar    ***T;
         PetscScalar    ***sigma;
-        PetscErrorCode    ierr;
-
-        PetscFunctionBeginUser;
 
         /* first sigma holds auxiliary variable dT/dp, temporarily */
-        ierr = pder(hz,Tvec,sigmavec);CHKERRQ(ierr);
+        pder(hz,Tvec,sigmavec);
 
         /* Calculating sigma --- sigma on rhs is "dT/dp" */
-        ierr = DMDAVecGetArrayRead(da,Tvec,&T);CHKERRQ(ierr);
-        ierr = DMDAVecGetArray(da,sigmavec,&sigma);CHKERRQ(ierr);
+        DMDAVecGetArrayRead(da,Tvec,&T);
+        DMDAVecGetArray(da,sigmavec,&sigma);
+
         LOOP_KJI(da,
                  sigma[k][j][i] =
                  R / p[k] * ( R / c_p * T[k][j][i] / p[k] - sigma[k][j][i]);
@@ -32,8 +30,9 @@ extern PetscErrorCode sigma_parameter(Context ctx)
                          sigma[k][j][i] = sigmamin;
                  }
                 );
-        ierr = DMDAVecRestoreArrayRead(da,Tvec,&T);CHKERRQ(ierr);
-        ierr = DMDAVecRestoreArray(da,sigmavec,&sigma);CHKERRQ(ierr);
 
-        PetscFunctionReturn(0);
+        DMDAVecRestoreArrayRead(da,Tvec,&T);
+        DMDAVecRestoreArray(da,sigmavec,&sigma);
+
+        return(0);
 }

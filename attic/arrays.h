@@ -1,7 +1,7 @@
 #ifndef ARRAYS_H
 #define ARRAYS_H
 
-#include "petscsys.h"
+#include <petscsys.h>
 
 typedef struct {
         int xs,ys,xm,ym;

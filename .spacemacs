@@ -305,7 +305,25 @@ explicitly specified that a variable should be set before a package is loaded,
 you should place your code here."
 
   (put 'helm-make-build-dir 'safe-local-variable 'stringp)
-  (push '(other . "python") c-default-style)
+
+  (c-add-style "mystyle"
+               '((c-basic-offset . 4)
+                 (arglist-intro . +)
+                 (arglist-cont-nonempty . +)))
+
+  (add-hook 'c-mode-common-hook '(lambda () (c-set-style "mystyle")))
+
+;;  (push '(c-mode . "mystyle") c-default-style)
+
+  (defun astyle-buffer ()
+    (interactive)
+    (shell-command-on-region
+     (point-min) (point-max)
+     "bash -c 'clang-format -style=file $1 | astyle -d --style=lisp --break-blocks' --"
+     (current-buffer) t
+     (get-buffer-create "*AStyle-errors*") t))
+  (global-set-key (kbd "C-c f") 'astyle-buffer)
+
   )
 
 ;; Do not write anything past this comment. This is where Emacs will
@@ -315,7 +333,10 @@ you should place your code here."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(safe-local-variable-values (quote ((helm-make-build-dir . "build")))))
+ '(safe-local-variable-values
+   (quote
+    ((helm-make-build-dir . "/vagrant/build")
+     (helm-make-build-dir . "build")))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

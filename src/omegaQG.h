@@ -4,9 +4,11 @@
 #include "petscksp.h"
 #include "context.h"
 
-extern PetscErrorCode compute_operator_omega_QG(KSP ksp, Mat dummy,
+#define OMEGA_QG_ID_STRING "ome_qg"
+
+extern PetscErrorCode omega_qg_compute_operator(KSP ksp, Mat dummy,
                                                 Mat L, void *ctx_p);
 
-extern PetscErrorCode compute_rhs_omega_QG(KSP ksp,Vec b,void *ctx_p);
+extern PetscErrorCode omega_qg_compute_rhs(KSP ksp,Vec b,void *ctx_p);
 
 #endif /* OMEGAQG_H */

@@ -25,7 +25,14 @@ configure_file (
 write_dir_locals ()
 write_clang_complete_cflags ()
 
-add_executable (cozoc arrays.c constants.c context.c coriolis_parameter.c
-  cozoc.c daslice.c derivatives.c idtest.c io.c omega.c omegaQG.c
-  sigma_parameter.c solve.c utils.c vecops.c vorticity.c wrfnc.c)
+add_executable (cozoc constants.c context.c coriolis_parameter.c
+  cozoc.c daslice.c derivatives.c io.c omega.c omegaQG.c
+  sigma_parameter.c utils.c vorticity.c wrfnc.c field.c)
 
+add_custom_command( OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.inc
+  COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.py > ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.inc
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.py
+  COMMENT "Generating source code" )
+add_custom_target(omega_stencil
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.inc)
+add_dependencies(cozoc omega_stencil)

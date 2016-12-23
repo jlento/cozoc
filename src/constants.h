@@ -1,9 +1,10 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-extern const double g,  // Gravitational acceleration (m/s^2)
-        R,              // Specific gas constant of dry air
-        c_p,            // Specific heat of dry air
-        sigmamin, etamin;
+extern const double Gravitational_acceleration;
+extern const double Specific_gas_constant_of_dry_air;
+extern const double Specific_heat_of_dry_air;
+extern const double sigmamin;
+extern const double etamin;
 
 #endif /* CONSTANTS_H */

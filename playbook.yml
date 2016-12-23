@@ -22,7 +22,9 @@
         - clang
         - pkg-config
         - ispell
-
+        - clang-format
+        - astyle
+        
     - name: COZOC requirements
       become: true
       apt: name="{{item}}" update_cache=yes cache_valid_time=3600

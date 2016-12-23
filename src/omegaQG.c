@@ -1,27 +1,10 @@
-#include "omegaQG.h"
-#include "petscksp.h"
-#include "petscdmda.h"
-#include <math.h>
-#include "context.h"
-#include "arrays.h"
 #include "constants.h"
-#include "io.h"
-#include "vecops.h"
+#include "context.h"
 #include "derivatives.h"
-
-static PetscErrorCode diff1d(const int n,PetscScalar *x,PetscScalar *f,
-                             PetscScalar *dfdx)
-{
-        PetscFunctionBeginUser;
-
-        dfdx[0] = (f[1] - f[0]) / (x[1] - x[0]);
-        for (int i = 1; i < n-1; i++)
-                dfdx[i] = (f[i+1] - f[i-1]) / (x[i+1] - x[i-1]);
-        dfdx[n-1] = (f[n-1] - f[n-2]) / (x[n-1] - x[n-2]);
-
-        PetscFunctionReturn(0);
-}
-
+#include "field.h"
+#include "omegaQG.h"
+#include "petscdmda.h"
+#include "petscksp.h"
 
 /*
  * L_{QG}(\omega) = \sigma_0 \nabla^2 \omega
@@ -33,280 +16,281 @@ static PetscErrorCode diff1d(const int n,PetscScalar *x,PetscScalar *f,
  *                \right)
  */
 
+extern PetscErrorCode omega_qg_compute_operator (
+    KSP ksp, Mat dummy, Mat L, void* ctx_p) {
 
-#undef __FUNCT__
-#define __FUNCT__ "compute_operator_omega_QG"
-extern PetscErrorCode compute_operator_omega_QG(KSP ksp, Mat dummy,
-                                                Mat L, void *ctx_p)
-{
-        Context ctx = (Context)ctx_p;
-        PetscScalar    *T_ave,*dTdp,*sigma0,*f2;
-        PetscScalar    *p = ctx->Pressure,*f;
-        PetscInt       i,j,k,mx,my,mz,xm,ym,zm,xs,ys,zs;
-        PetscScalar    v[7],HyHzdHx,HxHzdHy,HxHydHz;
-        const int      sm = 7;
-        MatStencil     row,col[sm];
-        DM             da;
-        //MatNullSpace   nullspace;
-        PetscErrorCode ierr;
+    Context      ctx = (Context) ctx_p;
+    PetscScalar* p   = ctx->Pressure;
+    PetscScalar* f   = ctx->Coriolis_parameter;
+    Vec          T   = ctx->Temperature;
+    const double R   = Specific_gas_constant_of_dry_air;
+    const double c_p = Specific_heat_of_dry_air;
+    PetscScalar *T_ave, *dTdp, *sigma0, *f2;
+    PetscInt     i, j, k, mx, my, mz, xm, ym, zm, xs, ys, zs;
+    PetscScalar  v[7], HyHzdHx, HxHzdHy, HxHydHz;
+    const int    sm = 7;
+    MatStencil   row, col[sm];
+    DM           da;
+    // MatNullSpace   nullspace;
 
-        PetscFunctionBeginUser;
+    KSPGetDM (ksp, &da);
+    DMDAGetInfo (da, 0, &mx, &my, &mz, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
 
-        ierr = KSPGetDM(ksp, &da); CHKERRQ(ierr);
-        ierr = DMDAGetInfo(da,0,&mx,&my,&mz,0,0,0,0,0,0,0,0,0);
-        ierr = DMDAGetCorners(da,&xs,&ys,&zs,&xm,&ym,&zm);
+    PetscMalloc4 (mz, &T_ave, mz, &dTdp, mz, &sigma0, my, &f2);
 
-        ierr = VecGetArray(ctx->f,&f); CHKERRQ(ierr);
+    horizontal_average (ctx, T, T_ave);
 
-        ierr = PetscMalloc4(mz,&T_ave,
-                            mz,&dTdp,
-                            mz,&sigma0,
-                            my,&f2);
+    diff1d (ctx->mz, p, T_ave, dTdp);
 
-        ierr = horizontal_average(ctx,ctx->T,T_ave);
+    for (int k    = zs; k < zs + zm; k++)
+        sigma0[k] = R / p[k] * (R / c_p * T_ave[k] / p[k] - dTdp[k]);
 
-        ierr = diff1d(ctx->mz,p,T_ave,dTdp);
+    for (int j = ys; j < ys + ym; j++)
+        f2[j]  = f[j] * f[j];
 
-        for (int k=zs; k<zs+zm; k++)
-                sigma0[k] = R / p[k] * ( R / c_p * T_ave[k] / p[k] - dTdp[k]);
+    HyHzdHx = ctx->hy * ctx->hz / ctx->hx;
+    HxHzdHy = ctx->hx * ctx->hz / ctx->hy;
+    HxHydHz = ctx->hx * ctx->hy / ctx->hz;
 
-        for (int j=ys; j<ys+ym; j++)
-                f2[j] = f[j] * f[j];
+    for (k = zs; k < zs + zm; k++) {
+        row.k    = k;
+        col[0].k = k;
+        col[1].k = k;
+        col[2].k = k;
+        col[3].k = k;
+        col[4].k = k;
+        col[5].k = k - 1;
+        col[6].k = k + 1;
 
-        HyHzdHx = ctx->hy * ctx->hz / ctx->hx;
-        HxHzdHy = ctx->hx * ctx->hz / ctx->hy;
-        HxHydHz = ctx->hx * ctx->hy / ctx->hz;
+        for (j = ys; j < ys + ym; j++) {
+            row.j    = j;
+            col[0].j = j;
 
-        for (k=zs; k<zs+zm; k++) {
-                row.k = k;
-                col[0].k = k;
-                col[1].k = k;
-                col[2].k = k;
-                col[3].k = k;
-                col[4].k = k;
-                col[5].k = k-1;
-                col[6].k = k+1;
-                for (j=ys; j<ys+ym; j++) {
-                        row.j = j;
-                        col[0].j = j;
-                        if(k==0 || k==mz-1 || j==0 || j==my-1) {
-                                for (i=xs; i<xs+xm; i++) {
-                                        row.i = i;
-                                        col[0].i = i;
-                                        v[0] = ctx->hx*ctx->hy*ctx->hz;
-                                        ierr = MatSetValuesStencil(
-                                                L,1,&row,1,col,v,INSERT_VALUES);
-                                }
-                        } else {
-                                col[1].j = j;
-                                col[2].j = j;
-                                col[3].j = j-1;
-                                col[4].j = j+1;
-                                col[5].j = j;
-                                col[6].j = j;
-                                v[0] =  - 2 * sigma0[k] * HyHzdHx
-                                        - 2 * sigma0[k] * HxHzdHy
-                                        - 2 * f2[j]     * HxHydHz;
-                                v[1] = sigma0[k] * HyHzdHx;
-                                v[2] = sigma0[k] * HyHzdHx;
-                                v[3] = sigma0[k] * HxHzdHy;
-                                v[4] = sigma0[k] * HxHzdHy;
-                                v[5] = f2[j] * HxHydHz;
-                                v[6] = f2[j] * HxHydHz;
-                                for (i=xs; i<xs+xm; i++) {
-                                        row.i = i;
-                                        col[0].i = i;
-                                        //col[1].i = (i + mx - 1) % mx ;
-                                        //col[2].i = (i + 1) % mx ;
-                                        col[1].i = i - 1;
-                                        col[2].i = i + 1;
-                                        col[3].i = i;
-                                        col[4].i = i;
-                                        col[5].i = i;
-                                        col[6].i = i;
-                                        ierr = MatSetValuesStencil(
-                                                L,1,&row,7,col,v,INSERT_VALUES);
-                                        CHKERRQ(ierr);
-                                }
-                        }
-                }
-        }
+            if (k == 0 || k == mz - 1 || j == 0 || j == my - 1) {
+                for (i = xs; i < xs + xm; i++) {
+                    row.i    = i;
+                    col[0].i = i;
+                    v[0]     = ctx->hx * ctx->hy * ctx->hz;
+                    MatSetValuesStencil (
+                        L, 1, &row, 1, col, v, INSERT_VALUES); } }
+            else {
+                col[1].j = j;
+                col[2].j = j;
+                col[3].j = j - 1;
+                col[4].j = j + 1;
+                col[5].j = j;
+                col[6].j = j;
+                v[0]     = -2 * sigma0[k] * HyHzdHx -
+                           2 * sigma0[k] * HxHzdHy - 2 * f2[j] * HxHydHz;
+                v[1] = sigma0[k] * HyHzdHx;
+                v[2] = sigma0[k] * HyHzdHx;
+                v[3] = sigma0[k] * HxHzdHy;
+                v[4] = sigma0[k] * HxHzdHy;
+                v[5] = f2[j] * HxHydHz;
+                v[6] = f2[j] * HxHydHz;
 
-        ierr = MatAssemblyBegin(L,MAT_FINAL_ASSEMBLY);
-        ierr = MatAssemblyEnd(L,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-/* ???
-   ierr = MatNullSpaceCreate(PETSC_COMM_WORLD,PETSC_TRUE,0,0,&nullspace);CHKERRQ(ierr);
-   ierr = MatSetNullSpace(J,nullspace);CHKERRQ(ierr);
-   ierr = MatNullSpaceDestroy(&nullspace);CHKERRQ(ierr);
-*/
-        ierr = VecRestoreArray(ctx->f,&f); CHKERRQ(ierr);
-        ierr = PetscFree4(T_ave,dTdp,sigma0,f2); CHKERRQ(ierr);
+                for (i = xs; i < xs + xm; i++) {
+                    row.i    = i;
+                    col[0].i = i;
+                    // col[1].i = (i + mx - 1) % mx ;
+                    // col[2].i = (i + 1) % mx ;
+                    col[1].i = i - 1;
+                    col[2].i = i + 1;
+                    col[3].i = i;
+                    col[4].i = i;
+                    col[5].i = i;
+                    col[6].i = i;
+                    MatSetValuesStencil (
+                        L, 1, &row, 7, col, v, INSERT_VALUES); } } } }
 
-        PetscFunctionReturn(0);
-}
+    MatAssemblyBegin (L, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd (L, MAT_FINAL_ASSEMBLY);
+    /* ???
+       ierr =
+       MatNullSpaceCreate(PETSC_COMM_WORLD,PETSC_TRUE,0,0,&nullspace);CHKERRQ(ierr);
+       MatSetNullSpace(J,nullspace);CHKERRQ(ierr);
+       MatNullSpaceDestroy(&nullspace);CHKERRQ(ierr);
+    */
 
-#undef __FUNCT__
-#define __FUNCT__ "geostrophic_wind_v"
-extern PetscErrorCode geostrophic_wind_v(Vec Z,Vec f,PetscScalar hx,Vec v)
-{
-        PetscErrorCode  ierr;
+    PetscFree4 (T_ave, dTdp, sigma0, f2);
 
-        PetscFunctionBeginUser;
-        ierr = xder(Z,hx,v);CHKERRQ(ierr);
-        ierr = ydivide(v,v,f);CHKERRQ(ierr);
-        ierr = VecScale(v,g);CHKERRQ(ierr);
-        PetscFunctionReturn(0);
-}
-
-#undef __FUNCT__
-#define __FUNCT__ "geostrophic_wind_u"
-        extern PetscErrorCode geostrophic_wind_u(Context ctx,Vec u)
-        {
-                DM da;
-                PetscInt i,j,k,zs,ys,xs,zm,ym,xm;
-                PetscScalar *f,w;
-                PetscScalar ***ua;
-                PetscErrorCode  ierr;
-
-                PetscFunctionBeginUser;
-
-                ierr = VecGetDM(u,&da);
-                ierr = DMDAGetCorners(da,&xs,&ys,&zs,&xm,&ym,&zm);CHKERRQ(ierr);
-
-                ierr = yder(ctx->Z,ctx->hy,u);CHKERRQ(ierr);
-
-                ierr = VecGetArray(ctx->f,&f);CHKERRQ(ierr);
-                ierr = DMDAVecGetArray(da,u,&ua);CHKERRQ(ierr);
-                for (k=zs; k<zs+zm; k++) {
-                        for (j=ys; j<ys+ym; j++) {
-                                w = -g / f[j];
-                                for (i=xs; i<xs+xm; i++) {
-                                        ua[k][j][i] *= w;
-                                }
-                        }
-                }
-                ierr = DMDAVecRestoreArray(da,u,&ua);CHKERRQ(ierr);
-                ierr = VecRestoreArray(ctx->f,&f);CHKERRQ(ierr);
-                PetscFunctionReturn(0);
-        }
-
-#undef __FUNCT__
-#define __FUNCT__ "surface_factor"
-        extern PetscErrorCode surface_factor(Context ctx,Vec s)
-        {
-                PetscInt i,j,k,zs,ys,xs,zm,ym,xm;
-                PetscScalar ***sa,*p=ctx->Pressure,**psfc;
-                PetscErrorCode  ierr;
-
-                PetscFunctionBeginUser;
-
-                ierr = DMDAGetCorners(ctx->da,&xs,&ys,&zs,&xm,&ym,&zm);
-                CHKERRQ(ierr);
-
-                ierr = DMDAVecGetArray(ctx->da,s,&sa);CHKERRQ(ierr);
-                ierr = DMDAVecGetArray(ctx->daxy,ctx->psfc,&psfc);CHKERRQ(ierr);
-                for (k=1; k<ctx->mz-1; k++) {
-                        for (j=ys; j<ys+ym; j++) {
-                                for (i=xs; i<xs+xm; i++) {
-                                        if (psfc[j][i] <= (p[k]+p[k+1])/2 ) {
-                                                sa[k][j][i] = 0.0;
-                                        } else if (psfc[j][i] <= (p[k]+p[k-1])/2) {
-                                                sa[k][j][i] =
-                                                        (p[k]+p[k+1]-2.0*psfc[j][i])
-                                                        / (p[k+1]-p[k-1]);
-                                        } else {
-                                                sa[k][j][i] = 1.0;
-                                        }
-                                }
-                        }
-                }
-                k = ctx->mz-1;
-                for (j=ys; j<ys+ym; j++) {
-                        for (i=xs; i<xs+xm; i++)
-                                sa[k][j][i] = 1.0;
-                }
-                k = 0;
-                for (j=ys; j<ys+ym; j++) {
-                        for (i=xs; i<xs+xm; i++) {
-                                if (psfc[j][i] > (p[k]+p[k+1])/2) {
-                                        sa[k][j][i] =
-                                                (p[k]+p[k+1]-2.0*psfc[j][i])
-                                                / (p[k+1]-p[k]) / 2.0;
-                                } else {
-                                        sa[k][j][i] = 1.0;
-                                }
-                        }
-                }
-                ierr = DMDAVecRestoreArray(ctx->daxy,ctx->psfc,&psfc);
-                CHKERRQ(ierr);
-                ierr = DMDAVecRestoreArray(ctx->da,s,&sa);CHKERRQ(ierr);
-                PetscFunctionReturn(0);
-        }
+    return (0); }
 
 
-#undef __FUNCT__
-#define __FUNCT__ "compute_vorticity_advection"
-extern PetscErrorCode compute_vorticity_advection(Context ctx,Vec u,Vec v,
-                                                  Vec F_V)
-{
-        DM da;
-        Vec s;
-        PetscErrorCode  ierr;
+/* *
+ * Geostrophic wind
+ *
+ * V_G = \left(
+ *              -\frac{g}{f}\frac{\partial Z}{\partial y},
+ *               \frac{g}{f}\frac{\partial Z}{\partial x}
+ *       \right)
+ */
 
-        PetscFunctionBeginUser;
+extern int geostrophic_wind (Vec Vvec, Context ctx) {
 
-        ierr = VecGetDM(F_V,&da);CHKERRQ(ierr);
+    DM           da   = ctx->da;
+    DM           da2  = ctx->da2;
+    Vec          Zvec = ctx->Geopotential_height;
+    PetscScalar* f    = ctx->Coriolis_parameter;
+    PetscScalar  wx   = 0.5 / ctx->hx;
+    PetscScalar  wy   = 0.5 / ctx->hy;
+    PetscInt     my   = ctx->my;
+    const double g    = Gravitational_acceleration;
 
-        ierr = VecDuplicate(F_V,&s);CHKERRQ(ierr);
+    Vec            Zloc;
+    PetscInt       i, j, k, zs, ys, xs, zm, ym, xm;
+    PetscScalar ***Z, ****V;
 
-        /* F_V = zeta_g */
-        ierr = curl(u,v,ctx->hx,ctx->hy,F_V);CHKERRQ(ierr);
-        /* F_V = zeta_g + f */
-        ierr = Vec2Vec123AXPY(F_V,1.0,ctx->f);CHKERRQ(ierr);
-        /* s = adv := V_G . grad(zeta_g + f) */
-        ierr = advection(u,v,F_V,ctx->hx,ctx->hy,F_V);CHKERRQ(ierr);
-        ierr = surface_factor(ctx,s);CHKERRQ(ierr);
-        ierr = VecPointwiseMult(F_V,s,F_V);CHKERRQ(ierr);
-        /* F_V = f * d/dp adv */
-        ierr = fpder(F_V,ctx);CHKERRQ(ierr);
+    DMGetLocalVector (da, &Zloc);
+    DMGlobalToLocalBegin (da, Zvec, INSERT_VALUES, Zloc);
+    DMGlobalToLocalEnd (da, Zvec, INSERT_VALUES, Zloc);
 
-        ierr = VecDestroy(&s);CHKERRQ(ierr);
+    DMDAVecGetArrayRead (da, Zloc, &Z);
+    DMDAVecGetArrayDOF (da2, Vvec, &V);
 
-        PetscFunctionReturn(0);
-}
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
 
-#undef __FUNCT__
-#define __FUNCT__ "compute_rhs_omega_QG"
-        extern PetscErrorCode compute_rhs_omega_QG(KSP ksp,Vec b,void *ctx_p)
-        {
-                Context ctx = (Context)ctx_p;
-                Vec Z = ctx->Z, f = ctx->f;
-                PetscScalar hx = ctx->hx;
+    int         j0, j1;
+    PetscScalar wyj, wxi;
 
-                Vec F_V, F_T;
+    for (k = zs; k < zs + zm; k++) {
+        for (j = ys; j < ys + ym; j++) {
+            if (j == 0) {
+                wyj = -g / f[j] * 2.0 * wy;
+                j1  = j + 1;
+                j0  = j; }
+            else if (j == my - 1) {
+                wyj = -g / f[j] * 2.0 * wy;
+                j1  = j;
+                j0  = j - 1; }
+            else {
+                wyj = -g / f[j] * wy;
+                j1  = j + 1;
+                j0  = j - 1; }
 
-                Vec u,v;
-                PetscErrorCode  ierr;
+            wxi = g / f[j] * wx;
 
-                PetscFunctionBeginUser;
+            for (i = xs; i < xs + xm; i++) {
+                V[k][j][i][0] = wyj * (Z[k][j1][i] - Z[k][j0][i]);
+                V[k][j][i][1] = wxi * (Z[k][j][i + 1] - Z[k][j][i - 1]); } } }
 
-                F_V = b;
-                ierr = VecDuplicate(b,&F_T);CHKERRQ(ierr);
-                ierr = VecDuplicate(b,&u);CHKERRQ(ierr);
-                ierr = VecDuplicate(b,&v);CHKERRQ(ierr);
 
-                ierr = geostrophic_wind_u(ctx,u);CHKERRQ(ierr);
-                ierr = geostrophic_wind_v(Z,f,hx,v);CHKERRQ(ierr);
+    DMDAVecRestoreArrayRead (da, Zloc, &Z);
+    DMDAVecRestoreArrayDOF (da, Vvec, &V);
 
-                ierr = compute_vorticity_advection(ctx,u,v,F_V);CHKERRQ(ierr);
-                ierr = VecScale(F_V,ctx->hx*ctx->hy*ctx->hz);CHKERRQ(ierr);
+    DMRestoreLocalVector (da, &Zloc);
 
-//ierr = compute_thermal_advection(ctx,u,v,F_T);CHKERRQ(ierr);
+    return (0); }
 
-//ierr = VecAXPY(F_V,1.0,F_T);CHKERRQ(ierr);
 
-                ierr = VecDestroy(&v);CHKERRQ(ierr);
-                ierr = VecDestroy(&u);CHKERRQ(ierr);
-                ierr = VecDestroy(&F_T);CHKERRQ(ierr);
-                PetscFunctionReturn(0);
-        }
+/* Geostrophic vorticity
+ *
+ * zeta_g = \nabla \rot V_g
+ *        = \left(
+ *                   \frac{\partial v_g}{\partial x}
+ *                 - \frac{\partial u_g}{\partial y}
+            \right)
+ */
+
+extern PetscErrorCode geostrophic_vorticity (
+    Vec result, Vec V_g, Context ctx) {
+
+    horizontal_rotor (V_g, result, ctx);
+
+    return (0); }
+
+
+extern PetscErrorCode surface_factor (Context ctx, Vec s) {
+
+    DM           da      = ctx->da;
+    DM           daxy    = ctx->daxy;
+    PetscScalar* p       = ctx->Pressure;
+    Vec          PSFCVec = ctx->Surface_pressure;
+
+    PetscInt       i, j, k, zs, ys, xs, zm, ym, xm;
+    PetscScalar ***sa, **psfc;
+
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+
+    DMDAVecGetArray (da, s, &sa);
+    DMDAVecGetArray (daxy, PSFCVec, &psfc);
+
+    for (k = 1; k < (int) ctx->mz - 1; k++) {
+        for (j = ys; j < ys + ym; j++) {
+            for (i = xs; i < xs + xm; i++) {
+                if (psfc[j][i] <= (p[k] + p[k + 1]) / 2) {
+                    sa[k][j][i] = 0.0; }
+                else if (psfc[j][i] <= (p[k] + p[k - 1]) / 2) {
+                    sa[k][j][i] = (p[k] + p[k + 1] - 2.0 * psfc[j][i]) /
+                                  (p[k + 1] - p[k - 1]); }
+                else {
+                    sa[k][j][i] = 1.0; } } } }
+
+    k = ctx->mz - 1;
+
+    for (j = ys; j < ys + ym; j++) {
+        for (i          = xs; i < xs + xm; i++)
+            sa[k][j][i] = 1.0; }
+
+    k = 0;
+
+    for (j = ys; j < ys + ym; j++) {
+        for (i = xs; i < xs + xm; i++) {
+            if (psfc[j][i] > (p[k] + p[k + 1]) / 2) {
+                sa[k][j][i] = (p[k] + p[k + 1] - 2.0 * psfc[j][i]) /
+                              (p[k + 1] - p[k]) / 2.0; }
+            else {
+                sa[k][j][i] = 1.0; } } }
+
+    DMDAVecRestoreArray (daxy, PSFCVec, &psfc);
+    DMDAVecRestoreArray (da, s, &sa);
+    return (0); }
+
+
+/* *
+ * F_{V(QG)} = f \frac{\partial}{\partial p}
+ *               \left[
+ *                       \mathbf{V_g} \cdot \nabla \left( \zeta_g +f
+ * \right)
+ *               \right]
+ *
+ *
+ * F_{T(QG)} = \frac{R}{p} \nabla^2 ( V_g \cdot \nabla T )
+ *
+ */
+
+extern PetscErrorCode omega_qg_compute_rhs (
+    KSP ksp, Vec F, void* ctx_p) {
+
+    Context      ctx = (Context) ctx_p;
+    DM           da2 = ctx->da2;
+    DM           da  = ctx->da;
+    Vec          T   = ctx->Temperature;
+    PetscScalar* f   = ctx->Coriolis_parameter;
+    Vec          V_g;
+    Vec          F_T;
+
+    DMGetGlobalVector (da2, &V_g);
+    DMGetGlobalVector (da, &F_T);
+
+    geostrophic_wind (V_g, ctx);
+
+    /* Vorticity advection forcing F_V*/
+    geostrophic_vorticity (F, V_g, ctx);    // F = zeta_g
+    field_array1d_add (F, f, DMDA_Y);       // (f+)
+    horizontal_advection (F, V_g, ctx);     // (V_g \cdot \nabla)
+    fpder (F, ctx);                         // (f * d/dp)
+
+    /* Temperature advection forcing F_T*/
+    VecCopy (T, F_T);                        // F_T = T
+    horizontal_advection (F_T, V_g, ctx);    // (V_g \cdot \nabla)
+    plaplace (F_T, ctx);                     // (R/p * \nabla^2)
+
+    /* F = F_V + F_T */
+    VecAXPY (F, 1.0, F_T);
+    VecScale (F, ctx->hx * ctx->hy * ctx->hz);
+
+    DMRestoreGlobalVector (ctx->da2, &V_g);
+    DMRestoreGlobalVector (ctx->da, &F_T);
+    return (0); }

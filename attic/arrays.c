@@ -1,5 +1,5 @@
 #include "arrays.h"
-#include "petscsys.h"
+#include <petscsys.h>
 
 #undef __FUNCT__
 #define __FUNCT__ "allocateArray2D"
@@ -18,12 +18,10 @@ extern PetscErrorCode allocateArray2D(const int xs,const int ys,
 
 #undef __FUNCT__
 #define __FUNCT__ "freeArray2D"
-                extern PetscErrorCode freeArray2D(Array2D *array)
-                {
-                        PetscFunctionBeginUser;
-                        free(array->data);
-                        PetscFunctionReturn(0);
-                }
+extern PetscErrorCode freeArray2D(Array2D *array) {
+  PetscFunctionBeginUser;
+  free(array->data);
+  PetscFunctionReturn(0); }
 
 #undef __FUNCT__
 #define __FUNCT__ "arrayGetArray2D"

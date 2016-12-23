@@ -1,7 +1,11 @@
 function (write_clang_complete_cflags)
   message (STATUS "Writing ${CMAKE_SOURCE_DIR}/.clang_complete")
+
   get_directory_property (includes INCLUDE_DIRECTORIES)
   get_directory_property (definitions COMPILE_DEFINITIONS)
+
+  set (includes ${includes} ${MPI_C_INCLUDE_PATH})
+
   if (includes)
     string (REPLACE ";" "\n-I" includes "-I${includes}")
   endif ()
