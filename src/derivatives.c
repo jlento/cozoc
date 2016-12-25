@@ -1,5 +1,5 @@
-#include "context.h"
 #include "constants.h"
+#include "context.h"
 #include "derivatives.h"
 #include "io.h"
 #include "petscdmda.h"
@@ -215,7 +215,7 @@ extern PetscErrorCode fpder (Vec bvec, Context ctx) {
     DMGlobalToLocalBegin (da, bvec, INSERT_VALUES, avec);
     DMGlobalToLocalEnd (da, bvec, INSERT_VALUES, avec);
 
-    DMDAVecGetArrayRead (da, avec, &a);
+
     DMDAVecGetArray (da, bvec, &b);
 
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
@@ -301,12 +301,12 @@ extern PetscErrorCode horizontal_average (
 extern PetscErrorCode plaplace (Vec inout, Context ctx) {
 
     DM             da = ctx->da;
-    PetscScalar *p = ctx->Pressure;
+    PetscScalar*   p  = ctx->Pressure;
     PetscScalar    hx = ctx->hx;
     PetscScalar    hy = ctx->hy;
     PetscInt       my = ctx->my;
     PetscInt       mz = ctx->mz;
-    const double    R = Specific_gas_constant_of_dry_air;
+    const double   R  = Specific_gas_constant_of_dry_air;
     Vec            Vvec;
     PetscInt       zs, ys, xs, zm, ym, xm;
     PetscScalar*** v;
@@ -324,6 +324,7 @@ extern PetscErrorCode plaplace (Vec inout, Context ctx) {
     for (int k = zs; k < zs + zm; k++) {
         double wx = R / (ctx->hx * ctx->hx * p[k]);
         double wy = R / (ctx->hy * ctx->hy * p[k]);
+
         for (int j = ys; j < ys + ym; j++) {
             int j0, j1;
 

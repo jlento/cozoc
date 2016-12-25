@@ -101,6 +101,20 @@ PetscErrorCode file_read_attribute(const int ncid, const char *name,
 #endif
     return (0); }
 
+
+PetscErrorCode file_read_int_attribute(const int ncid, const char *name,
+                                   PetscInt *attr) {
+#ifdef USE_PARALLEL_NETCDF
+    nc_get_att_int(ncid, NC_GLOBAL, name, attr);
+#else
+    PetscMPIInt rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    if (rank == 0) nc_get_att_int(ncid, NC_GLOBAL, name, attr);
+    MPI_Scatter(attr, 1, MPI_DOUBLE, attr, 1, MPI_DOUBLE, 0, PETSC_COMM_WORLD);
+#endif
+    return (0); }
+
+
 int _read3D(const int ncid, const char *varname, const size_t start[4],
             const size_t count[4], PetscScalar *a) {
     int id;
@@ -156,34 +170,26 @@ extern PetscErrorCode read2D(const int ncid, const unsigned long time,
     PetscScalar ** a;
     size_t         start[3], count[3];
     int            id;
-    PetscErrorCode ierr;
 
-    PetscFunctionBeginUser;
-
-    ierr = VecGetDM(v, &da);
+    VecGetDM(v, &da);
 
 #ifndef USE_PARALLEL_NETCDF
     PetscInt    my, mx;
     PetscMPIInt size;
-    ierr = MPI_Comm_size(PETSC_COMM_WORLD, &size);
+    MPI_Comm_size(PETSC_COMM_WORLD, &size);
     if (size == 1) {
 #endif
         /* Parallel Netcdf4 or MPI size equal to 1 */
-        ierr = DMDAGetCorners(da, &xs, &ys, 0, &xm, &ym, 0);
-        CHKERRQ(ierr);
-        ierr = DMDAVecGetArray(da, v, &a);
-        CHKERRQ(ierr);
+        DMDAGetCorners(da, &xs, &ys, 0, &xm, &ym, 0);
+        DMDAVecGetArray(da, v, &a);
         start[0] = time;
         start[1] = ys;
         start[2] = xs;
         count[0] = 1;
         count[1] = ym;
         count[2] = xm;
-        ierr     = nc_inq_varid(ncid, varname, &id);
-        ERR(ierr);
-        ierr =
-            nc_get_vara_double(ncid, id, start, count, &a[start[1]][start[2]]);
-        ERR(ierr);
+        nc_inq_varid(ncid, varname, &id);
+        nc_get_vara_double(ncid, id, start, count, &a[start[1]][start[2]]);
 
 #ifndef USE_PARALLEL_NETCDF
     }
@@ -191,41 +197,31 @@ extern PetscErrorCode read2D(const int ncid, const unsigned long time,
         /* Sequential Netcdf and MPI size not equal to 1 */
         PetscMPIInt  rank;
         PetscScalar *buffer;
-        ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+        MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
         if (rank == 0) {
-            ierr = DMDAGetInfo(da, 0, &mx, &my, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            CHKERRQ(ierr);
-            ierr = PetscMalloc1(mx * my, &buffer);
-            CHKERRQ(ierr);
+            DMDAGetInfo(da, 0, &mx, &my, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            PetscMalloc1(mx * my, &buffer);
             start[0] = time;
             count[0] = 1;
             start[1] = 0;
             count[1] = my;
             start[2] = 0;
             count[2] = mx;
-            ierr     = nc_inq_varid(ncid, varname, &id);
-            ERR(ierr);
-            ierr = nc_get_vara_double(ncid, id, start, count, buffer);
-            ERR(ierr);
+            nc_inq_varid(ncid, varname, &id);
+            nc_get_vara_double(ncid, id, start, count, buffer);
 
-            ierr = VecSetBlockSize(v, mx * my);
-            CHKERRQ(ierr);
-            ierr = VecSetValuesBlocked(v, 1, (const PetscInt *)0, buffer,
-                                       INSERT_VALUES);
-            CHKERRQ(ierr);
-            ierr = VecAssemblyBegin(v);
-            CHKERRQ(ierr);
-            ierr = VecAssemblyEnd(v);
-            CHKERRQ(ierr);
-            ierr = PetscFree(buffer);
-            CHKERRQ(ierr); } }
+            VecSetBlockSize(v, mx * my);
+            VecSetValuesBlocked(v, 1, (const PetscInt *)0, buffer,
+                                INSERT_VALUES);
+            VecAssemblyBegin(v);
+            VecAssemblyEnd(v);
+            PetscFree(buffer); } }
 #endif
 
-    ierr = DMDAVecRestoreArray(da, v, &a);
-    CHKERRQ(ierr);
+    DMDAVecRestoreArray(da, v, &a);
 
-    PetscFunctionReturn(0); }
+    return(0); }
 
 extern PetscErrorCode readArray(const int ncid, const char *varname,
                                 const size_t *start, const size_t *count,

@@ -13,17 +13,20 @@ typedef struct {
     DM           da, da2;
     DM           daxy;
     KSP          ksp;
-    size_t       mx, my, mz, mt; /* Global grid sizes */
-    PetscScalar  hx, hy, hz;     /* Grid spacings */
-    PetscInt     time;           /* Current timestep */
+    size_t       mx, my, mz, mt; // Global grid sizes
+    PetscScalar  hx, hy, hz;     // Grid spacings
+    PetscInt     time;           // Current timestep
+    int          cu_physics;
     PetscScalar* Pressure;
     PetscScalar* Coriolis_parameter;
     Vec          Surface_pressure;
+    Vec          Temperature;
     Vec          Sigma_parameter;
     Vec          Vorticity;
-    Vec          Horizontal_wind;
     Vec          Geopotential_height;
-    Vec          Temperature;
+    Vec          Diabatic_heating;
+    Vec          Horizontal_wind;
+    Vec          Friction;
     Vec          omega[N_OMEGA_COMPONENTS]; } tContext, *Context;
 
 

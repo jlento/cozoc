@@ -47,6 +47,8 @@ extern PetscErrorCode read2D (
 
 extern PetscErrorCode file_read_attribute (
     const int ncid, const char* name, PetscScalar* attr);
+extern PetscErrorCode file_read_int_attribute (
+    const int ncid, const char* name, int* attr);
 
 extern PetscErrorCode readArray1D (
     const int           ncid,
