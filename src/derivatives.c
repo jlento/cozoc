@@ -6,7 +6,7 @@
 #include <strings.h>
 
 
-extern PetscErrorCode diff1d (
+int diff1d (
     const int n, PetscScalar* x, PetscScalar* f, PetscScalar* dfdx) {
 
     dfdx[0] = (f[1] - f[0]) / (x[1] - x[0]);
@@ -25,8 +25,7 @@ extern PetscErrorCode diff1d (
  * - one-sided derivatives at the top and bottom boundaries
  */
 
-extern PetscErrorCode pder (
-    const PetscScalar hz, const Vec fvec, Vec dvec) {
+int pder (const PetscScalar hz, const Vec fvec, Vec dvec) {
 
     DM             da;
     PetscScalar    wz = 0.5 / hz;
@@ -82,8 +81,7 @@ extern PetscErrorCode pder (
  * - one-sided derivatives at the north and south boundaries
  */
 
-extern PetscErrorCode horizontal_rotor (
-    Vec Vvec, Vec bvec, Context ctx) {
+int horizontal_rotor (Vec Vvec, Vec bvec, Context ctx) {
 
     DM              da  = ctx->da;
     DM              da2 = ctx->da2;
@@ -140,8 +138,7 @@ extern PetscErrorCode horizontal_rotor (
  * - one-sided derivatives at the north and south boundaries
  */
 
-extern PetscErrorCode horizontal_advection (
-    Vec bvec, Vec Vvec, Context ctx) {
+int horizontal_advection (Vec bvec, Vec Vvec, Context ctx) {
 
     DM              da = ctx->da, da2 = ctx->da2;
     PetscScalar     wx = 0.5 / ctx->hx, wy = 0.5 / ctx->hy;
@@ -201,7 +198,7 @@ extern PetscErrorCode horizontal_advection (
  * - one-sided derivatives at top and bottom boundaries
  */
 
-extern PetscErrorCode fpder (Vec bvec, Context ctx) {
+int fpder (Vec bvec, Context ctx) {
 
     DM             da = ctx->da;
     PetscInt       mz = ctx->mz;
@@ -249,8 +246,7 @@ extern PetscErrorCode fpder (Vec bvec, Context ctx) {
     return (0); }
 
 
-extern PetscErrorCode horizontal_average (
-    Context ctx, Vec v, PetscScalar v_ave[]) {
+int horizontal_average (Context ctx, Vec v, PetscScalar v_ave[]) {
 
     DM             da;
     PetscInt       zs, ys, xs, zm, ym, xm, m, n;
@@ -298,7 +294,7 @@ extern PetscErrorCode horizontal_average (
  * - one-sided derivatives at the north and south boundaries
  */
 
-extern PetscErrorCode plaplace (Vec inout, Context ctx) {
+int plaplace (Vec inout, Context ctx) {
 
     DM             da = ctx->da;
     PetscScalar*   p  = ctx->Pressure;

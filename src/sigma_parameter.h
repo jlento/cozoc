@@ -3,6 +3,6 @@
 
 #include "context.h"
 
-extern PetscErrorCode sigma_parameter(Context ctx);
+int sigma_parameter (Context ctx);
 
 #endif /* SIGMA_PARAMETER_H */

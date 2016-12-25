@@ -13,9 +13,9 @@ typedef struct {
     DM           da, da2;
     DM           daxy;
     KSP          ksp;
-    size_t       mx, my, mz, mt; // Global grid sizes
-    PetscScalar  hx, hy, hz;     // Grid spacings
-    PetscInt     time;           // Current timestep
+    size_t       mx, my, mz, mt;    // Global grid sizes
+    PetscScalar  hx, hy, hz;        // Grid spacings
+    PetscInt     time;              // Current timestep
     int          cu_physics;
     PetscScalar* Pressure;
     PetscScalar* Coriolis_parameter;
@@ -30,12 +30,11 @@ typedef struct {
     Vec          omega[N_OMEGA_COMPONENTS]; } tContext, *Context;
 
 
-extern PetscErrorCode context_create (
+int context_create (
     const int ncid, int skip, int* steps, int* flags, Context* ctx);
 
-extern PetscErrorCode context_destroy (Context* ctx);
+int context_destroy (Context* ctx);
 
-extern PetscErrorCode context_update (
-    const int ncid, const int time, Context ctx);
+int context_update (const int ncid, const int time, Context ctx);
 
 #endif /* CONTEXT_H */

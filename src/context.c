@@ -12,7 +12,7 @@
 #include <petscksp.h>
 
 
-extern PetscErrorCode context_create (
+int context_create (
     const int ncid, int skip, int* steps, int* flags, Context* p_ctx) {
 
     Context ctx;
@@ -105,7 +105,7 @@ extern PetscErrorCode context_create (
     return (0); }
 
 
-extern PetscErrorCode context_destroy (Context* p_ctx) {
+int context_destroy (Context* p_ctx) {
 
     Context ctx = *p_ctx;
 
@@ -225,8 +225,7 @@ static int diabatic_heating (Context ctx, const int ncid, Vec mvec) {
     return (0); }
 
 
-extern PetscErrorCode context_update (
-    const int ncid, const int time, Context ctx) {
+int context_update (const int ncid, const int time, Context ctx) {
 
     DM  daxy = ctx->daxy;
     Vec mu_inv;

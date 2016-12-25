@@ -3,7 +3,7 @@
 #include <stdarg.h>
 
 
-extern PetscErrorCode field_array1d_add (
+int field_array1d_add (
     Vec x, PetscScalar* arr, DMDADirection direction) {
 
     DM             da;
@@ -37,7 +37,7 @@ extern PetscErrorCode field_array1d_add (
     return (0); }
 
 
-extern PetscErrorCode field_array2d_add (
+int field_array2d_add (
     Vec x, PetscScalar** arr, DMDADirection direction) {
 
     DM             da;
