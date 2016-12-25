@@ -29,6 +29,8 @@ add_executable (cozoc constants.c context.c coriolis_parameter.c
   cozoc.c daslice.c derivatives.c io.c omega.c omegaQG.c
   sigma_parameter.c utils.c vorticity.c wrfnc.c field.c)
 
+target_link_libraries (cozoc m)
+
 add_custom_command( OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.inc
   COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.py > ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.inc
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.py
