@@ -25,7 +25,7 @@ configure_file (
 write_dir_locals ()
 write_clang_complete_cflags ()
 
-add_executable (cozoc constants.c context.c coriolis_parameter.c
+add_executable (cozoc constants.c context.c
   cozoc.c daslice.c derivatives.c io.c omega.c omegaQG.c
   sigma_parameter.c utils.c vorticity.c wrfnc.c field.c)
 

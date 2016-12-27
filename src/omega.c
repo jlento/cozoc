@@ -1,5 +1,5 @@
 #include "context.h"
-//#include "coriolis_parameter.h"
+#include "constants.h"
 #include "derivatives.h"
 #include "field.h"
 #include "io.h"
@@ -11,11 +11,15 @@
 
 
 char* omega_component_id_string[N_OMEGA_COMPONENTS] = {"ome_v",
-                                                       "ome_t" };
+                                                       "ome_t",
+                                                       "ome_f",
+                                                       "ome_q"};
 
 PetscErrorCode (*omega_compute_rhs[N_OMEGA_COMPONENTS]) (
     KSP ksp, Vec b, void* ctx_p) = {omega_compute_rhs_F_V,
-                                    omega_compute_rhs_F_T };
+                                    omega_compute_rhs_F_T,
+                                    omega_compute_rhs_F_F,
+                                    omega_compute_rhs_F_Q};
 
 
 /* *
@@ -160,3 +164,53 @@ extern PetscErrorCode omega_compute_rhs_F_T (
     VecScale (b, hx * hy * hz);
 
     return (0); }
+
+
+/* *
+ * Friction forcing
+ *
+ * F_F = - f \frac{\partial}{\partial p}
+ *               \left(
+ *                       \mathbf{k} \cdot \nabla \times \mathbf{F}
+ *               \right)
+ */
+
+extern PetscErrorCode omega_compute_rhs_F_F (
+    KSP ksp, Vec b, void* ctx_p) {
+
+    Context      ctx  = (Context) ctx_p;
+    Vec          F    = ctx->Friction;
+    PetscScalar  hx   = ctx->hx;
+    PetscScalar  hy   = ctx->hy;
+    PetscScalar  hz   = ctx->hz;
+
+    horizontal_rotor (F, b, ctx);
+    fpder (b, ctx);
+    VecScale (b, - hx * hy * hz);
+
+    return (0); }
+
+
+/* *
+ * Diabatic heating forcing
+ *
+ * F_Q = -\frac{R}{c_p p} \nabla^2 ( \mathbf{V} \cdot \nabla \mathbf{T} )
+ *
+ */
+
+extern PetscErrorCode omega_compute_rhs_F_Q (
+    KSP ksp, Vec b, void* ctx_p) {
+
+    Context      ctx = (Context) ctx_p;
+    Vec          Q   = ctx->Diabatic_heating;
+    PetscScalar  hx  = ctx->hx;
+    PetscScalar  hy  = ctx->hy;
+    PetscScalar  hz  = ctx->hz;
+    PetscScalar  c_p = Specific_heat_of_dry_air;
+
+    VecCopy (Q, b);
+    plaplace (b, ctx);
+    VecScale (b, - hx * hy * hz / c_p);
+
+    return (0); }
+

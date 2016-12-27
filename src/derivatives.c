@@ -212,7 +212,6 @@ int fpder (Vec bvec, Context ctx) {
     DMGlobalToLocalBegin (da, bvec, INSERT_VALUES, avec);
     DMGlobalToLocalEnd (da, bvec, INSERT_VALUES, avec);
 
-
     DMDAVecGetArrayRead (da, avec, &a);
     DMDAVecGetArray (da, bvec, &b);
 

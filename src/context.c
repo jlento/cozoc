@@ -75,6 +75,7 @@ int context_create (
     VecDuplicate (ctx->Temperature, &ctx->Diabatic_heating);
 
     DMCreateGlobalVector (ctx->da2, &ctx->Horizontal_wind);
+    VecDuplicate (ctx->Horizontal_wind, &ctx->Friction);
 
 
     /* These are read here because they do not depend on time */
@@ -83,7 +84,7 @@ int context_create (
     {
         size_t start[1] = {0 };
         size_t count[1] = {ctx->mz };
-        readArray (ncid, fieldnames[z], start, count, ctx->Pressure); }
+        readArray (ncid, fieldnames[Z_COORDINATE], start, count, ctx->Pressure); }
 
     /* Coriollis parameter is taken to be a function of latitude, only
      */
@@ -91,7 +92,7 @@ int context_create (
         size_t start[3] = {0, 0, 0 };
         size_t count[3] = {1, ctx->my, 1 };
         readArray (
-            ncid, fieldnames[F], start, count, ctx->Coriolis_parameter); }
+            ncid, fieldnames[FRICTION], start, count, ctx->Coriolis_parameter); }
 
     /* Grid spacings */
     file_read_attribute (ncid, "DX", &ctx->hx);
@@ -220,7 +221,58 @@ static int diabatic_heating (Context ctx, const int ncid, Vec mvec) {
 
     DMDAVecRestoreArray (da, Q, &qa);
 
-    DMRestoreGlobalVector (ctx->da, &tmp3d);
+    DMRestoreGlobalVector (da, &tmp3d);
+
+    return (0); }
+
+
+static int friction (Context ctx, const int ncid, Vec mvec) {
+
+    DM            da         = ctx->da;
+    DM            da2        = ctx->da2;
+    DM            daxy       = ctx->daxy;
+    int           cu_physics = ctx->cu_physics;
+    int           time       = ctx->time;
+    Vec           F          = ctx->Friction;
+    PetscScalar*  p          = ctx->Pressure;
+    const double  r          = Specific_gas_constant_of_dry_air;
+    const double  cp         = Specific_heat_of_dry_air;
+    Vec           tmp3d;
+    PetscInt      zs, ys, xs, zm, ym, xm;
+    PetscScalar **ma, ****fa;
+
+    DMGetGlobalVector (da, &tmp3d);
+
+    switch (cu_physics) {
+    case 1:
+        read3D (ncid, time, "RUCUTEN", tmp3d);
+        VecStrideScatter (tmp3d, 0, F, INSERT_VALUES);
+        read3D (ncid, time, "RUBLTEN", tmp3d);
+        VecStrideScatter (tmp3d, 0, F, ADD_VALUES);
+        read3D (ncid, time, "RVCUTEN", tmp3d);
+        VecStrideScatter (tmp3d, 1, F, INSERT_VALUES);
+        read3D (ncid, time, "RVBLTEN", tmp3d);
+        VecStrideScatter (tmp3d, 1, F, ADD_VALUES);
+        break;
+
+    default:
+        printf ("Some sensible error here"); }
+
+    DMDAVecGetArrayRead (daxy, mvec, &ma);
+    DMDAVecGetArrayDOF (da2, F, &fa);
+
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+
+    for (int k = zs; k < zs + zm; k++) {
+        for (int j = ys; j < ys + ym; j++) {
+            for (int i = xs; i < xs + xm; i++) {
+                fa[k][j][i][0] *= ma[j][i];
+                fa[k][j][i][1] *= ma[j][i];} } }
+
+    DMDAVecRestoreArrayDOF (da2, F, &fa);
+    DMDAVecRestoreArrayRead (daxy, mvec, &ma);
+
+    DMRestoreGlobalVector (da, &tmp3d);
 
     return (0); }
 
@@ -247,6 +299,7 @@ int context_update (const int ncid, const int time, Context ctx) {
     sigma_parameter (ctx);
     vorticity (ctx);
     diabatic_heating (ctx, ncid, mu_inv);
+    friction (ctx, ncid, mu_inv);
 
     DMRestoreGlobalVector (daxy, &mu_inv);
 

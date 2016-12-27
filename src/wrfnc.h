@@ -4,7 +4,7 @@
 enum dimensions { TIME, ZDIM, YDIM, XDIM, NDIMS };
 extern const char* dimnames[NDIMS];
 
-enum fields { z, F, NFIELDS };
+enum fields { Z_COORDINATE, FRICTION, NFIELDS };
 extern const char* fieldnames[NFIELDS];
 
 #endif /* WRFNC_H */

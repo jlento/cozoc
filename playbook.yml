@@ -24,6 +24,12 @@
         - ispell
         - clang-format
         - astyle
+
+    - name: Disable ntp
+      become: true
+      service:
+        name: ntp
+        enabled: no
         
     - name: COZOC requirements
       become: true
