@@ -9,6 +9,10 @@ find_netcdf_par_h ()
 
 set (CMAKE_C_COMPILER ${MPI_C_COMPILER})
 
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+  set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -pedantic")
+endif ()
+
 include_directories (
   ${CMAKE_CURRENT_BINARY_DIR}
   ${PETSC_INCLUDE_DIR}
@@ -26,8 +30,8 @@ write_dir_locals ()
 write_clang_complete_cflags ()
 
 add_executable (cozoc constants.c context.c
-  cozoc.c daslice.c derivatives.c io.c omega.c omegaQG.c
-  sigma_parameter.c utils.c vorticity.c wrfnc.c field.c)
+  cozoc.c daslice.c ops.c io.c omega.c omegaQG.c
+  utils.c)
 
 target_link_libraries (cozoc m)
 

@@ -1,9 +1,75 @@
 #include "constants.h"
 #include "context.h"
-#include "derivatives.h"
-#include "io.h"
+#include "ops.h"
 #include "petscdmda.h"
-#include <strings.h>
+
+
+int field_array1d_add (
+    Vec x, PetscScalar* arr, DMDADirection direction) {
+
+    DM             da;
+    PetscInt       i, j, k, zs, ys, xs, zm, ym, xm;
+    PetscScalar*** xa;
+
+    VecGetDM (x, &da);
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+    DMDAVecGetArray (da, x, &xa);
+
+    switch (direction) {
+    case DMDA_X:
+        for (k = zs; k < zs + zm; k++) {
+            for (j = ys; j < ys + ym; j++) {
+                for (i = xs; i < xs + xm; i++) {
+                    xa[k][j][i] += arr[i]; } } }
+
+    case DMDA_Y:
+        for (k = zs; k < zs + zm; k++) {
+            for (j = ys; j < ys + ym; j++) {
+                for (i = xs; i < xs + xm; i++) {
+                    xa[k][j][i] += arr[j]; } } }
+
+    case DMDA_Z:
+        for (k = zs; k < zs + zm; k++) {
+            for (j = ys; j < ys + ym; j++) {
+                for (i = xs; i < xs + xm; i++) {
+                    xa[k][j][i] += arr[k]; } } } }
+
+    DMDAVecRestoreArray (da, x, &xa);
+    return (0); }
+
+
+int field_array2d_add (
+    Vec x, PetscScalar** arr, DMDADirection direction) {
+
+    DM             da;
+    PetscInt       i, j, k, zs, ys, xs, zm, ym, xm;
+    PetscScalar*** xa;
+
+    VecGetDM (x, &da);
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+    DMDAVecGetArray (da, x, &xa);
+
+    switch (direction) {
+    case DMDA_X:
+        for (k = zs; k < zs + zm; k++) {
+            for (j = ys; j < ys + ym; j++) {
+                for (i = xs; i < xs + xm; i++) {
+                    xa[k][j][i] += arr[j][k]; } } }
+
+    case DMDA_Y:
+        for (k = zs; k < zs + zm; k++) {
+            for (j = ys; j < ys + ym; j++) {
+                for (i = xs; i < xs + xm; i++) {
+                    xa[k][j][i] += arr[i][k]; } } }
+
+    case DMDA_Z:
+        for (k = zs; k < zs + zm; k++) {
+            for (j = ys; j < ys + ym; j++) {
+                for (i = xs; i < xs + xm; i++) {
+                    xa[k][j][i] += arr[i][j]; } } } }
+
+    DMDAVecRestoreArray (da, x, &xa);
+    return (0); }
 
 
 int diff1d (
@@ -18,75 +84,22 @@ int diff1d (
 
     return (0); }
 
-
-/* *
- * pressure derivative, $ \nabla \times $
- *
- * - one-sided derivatives at the top and bottom boundaries
- */
-
-int pder (const PetscScalar hz, const Vec fvec, Vec dvec) {
-
-    DM             da;
-    PetscScalar    wz = 0.5 / hz;
-    Vec            avec;
-    PetscInt       i, j, k, zs, ys, xs, zm, ym, xm, mz;
-    PetscScalar*** a;
-    PetscScalar*** d;
-
-    VecGetDM (fvec, &da);
-    DMGetLocalVector (da, &avec);
-
-    DMGlobalToLocalBegin (da, fvec, INSERT_VALUES, avec);
-    DMGlobalToLocalEnd (da, fvec, INSERT_VALUES, avec);
-
-    DMDAVecGetArrayRead (da, avec, &a);
-    DMDAVecGetArray (da, dvec, &d);
-
-    DMDAGetInfo (da, 0, 0, 0, &mz, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
-
-    for (k = zs; k < zs + zm; k++) {
-        int         k0, k1;
-        PetscScalar wzk;
-
-        if (k == 0) {
-            wzk = 2.0 * wz;
-            k1  = k + 1;
-            k0  = 0; }
-        else if (k == mz - 1) {
-            wzk = 2.0 * wz;
-            k1  = k;
-            k0  = k - 1; }
-        else {
-            wzk = wz;
-            k1  = k + 1;
-            k0  = k - 1; }
-
-        for (j = ys; j < ys + ym; j++) {
-            for (i = xs; i < xs + xm; i++) {
-                d[k][j][i] = (a[k1][j][i] - a[k0][j][i]) * wzk; } } }
-
-    DMDAVecRestoreArrayRead (da, avec, &a);
-    DMDAVecRestoreArray (da, dvec, &d);
-
-    DMRestoreLocalVector (da, &avec);
-
-    return (0); }
-
-
 /* *
  * Horizontal rotor operator, $ \nabla \times $
  *
  * - one-sided derivatives at the north and south boundaries
  */
 
-int horizontal_rotor (Vec Vvec, Vec bvec, Context ctx) {
+int horizontal_rotor (
+    DM                da,
+    DM                da2,
+    const size_t      my,
+    const PetscScalar hx,
+    const PetscScalar hy,
+    Vec               Vvec,
+    Vec               bvec) {
 
-    DM              da  = ctx->da;
-    DM              da2 = ctx->da2;
-    PetscScalar     wx = 0.5 / ctx->hx, wy = 0.5 / ctx->hy;
-    PetscInt        my = ctx->my;
+    PetscScalar     wx = 0.5 / hx, wy = 0.5 / hy;
     Vec             avec;
     PetscInt        i, j, k, zs, ys, xs, zm, ym, xm;
     PetscScalar ****a, ***b;
@@ -109,7 +122,7 @@ int horizontal_rotor (Vec Vvec, Vec bvec, Context ctx) {
                 wyj = 2.0 * wy;
                 j1  = j + 1;
                 j0  = j; }
-            else if (j == my - 1) {
+            else if (j == (int)my - 1) {
                 wyj = 2.0 * wy;
                 j1  = j;
                 j0  = j - 1; }
@@ -192,18 +205,17 @@ int horizontal_advection (Vec bvec, Vec Vvec, Context ctx) {
 
 
 /* *
- * Operator coriolis parameter times pressure derivative,
+ * Operator coriolis parameter (or some other f[y]) times pressure
+ * derivative,
  * $ f \frac{\partial}{\partial p} $
  *
  * - one-sided derivatives at top and bottom boundaries
  */
 
-int fpder (Vec bvec, Context ctx) {
+int fpder (
+    DM da, PetscInt mz, PetscScalar* f, PetscScalar* p, Vec bvec) {
 
-    DM             da = ctx->da;
-    PetscInt       mz = ctx->mz;
-    PetscScalar    wz = 0.5 / ctx->hz;
-    PetscScalar*   f  = ctx->Coriolis_parameter;
+    PetscScalar    wz = 0.5 / (p[1] - p[0]);
     Vec            avec;
     PetscInt       i, j, k, zs, ys, xs, zm, ym, xm;
     PetscScalar ***a, ***b;
@@ -234,9 +246,14 @@ int fpder (Vec bvec, Context ctx) {
             k1 = k + 1;
             k0 = k - 1; }
 
-        for (j = ys; j < ys + ym; j++) {
-            for (i = xs; i < xs + xm; i++) {
-                b[k][j][i] = f[j] * (a[k1][j][i] - a[k0][j][i]) * w; } } }
+        if (f == NULL)
+            for (j = ys; j < ys + ym; j++) {
+                for (i = xs; i < xs + xm; i++) {
+                    b[k][j][i] = (a[k1][j][i] - a[k0][j][i]) * w; } }
+        else
+            for (j = ys; j < ys + ym; j++) {
+                for (i = xs; i < xs + xm; i++) {
+                    b[k][j][i] = f[j] * (a[k1][j][i] - a[k0][j][i]) * w; } } }
 
     DMDAVecRestoreArrayRead (da, avec, &a);
     DMDAVecRestoreArray (da, bvec, &b);
@@ -282,7 +299,7 @@ int horizontal_average (Context ctx, Vec v, PetscScalar v_ave[]) {
     DMDAGetInfo (da, 0, 0, 0, 0, &m, &n, 0, 0, 0, 0, 0, 0, 0);
     w = 1.0 / (double) m / (double) n;
 
-    for (int k = 0; k < ctx->mz; k++)
+    for (int k = 0; k < (int)ctx->mz; k++)
         v_ave[k] *= w;
 
     return (0); }

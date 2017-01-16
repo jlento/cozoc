@@ -43,7 +43,7 @@ values."
      ;; better-defaults
      emacs-lisp
      (c-c++ :variables c-c++-enable-clang-support t)
-     auto-completion
+     (auto-completion :variables auto-completion-enable-snippets-in-popup t)
      ;; git
      ;; markdown
      ;; org

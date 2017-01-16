@@ -5,11 +5,17 @@
 #include "netcdf_par.h"
 #endif
 #include "petscdmda.h"
-#include "wrfnc.h"
 #include <strings.h>
+
 
 /* If linked against sequential Netcdf4, only MPI rank 0 performs file
  * I/O */
+
+
+const char* dimnames[NDIMS] = {
+    "time", "vlevs", "south_north", "west_east" };
+
+const char* fieldnames[NFIELDS] = {"XTIME", "LEV", "F" };
 
 
 PetscErrorCode file_open (const char* wrfin, int* ncid) {
@@ -277,30 +283,32 @@ int read2D (
 
     return (0); }
 
-int readArray (
+
+int _readArray (
     const int     ncid,
     const char*   varname,
     const size_t* start,
     const size_t* count,
-    PetscScalar*  a) {
-    int            id;
-    PetscErrorCode ierr;
+    int*          a_int,
+    double*       a_double) {
 
-    PetscFunctionBeginUser;
+    int id;
 
 #ifndef USE_PARALLEL_NETCDF
     PetscMPIInt rank, size;
-    ierr = MPI_Comm_rank (PETSC_COMM_WORLD, &rank);
-    ierr = MPI_Comm_size (PETSC_COMM_WORLD, &size);
+    MPI_Comm_rank (PETSC_COMM_WORLD, &rank);
+    MPI_Comm_size (PETSC_COMM_WORLD, &size);
 
     if (rank == 0) {
 #endif
 
         /* Parallel Netcdf4 or MPI rank equal to 0 */
-        ierr = nc_inq_varid (ncid, varname, &id);
-        ERR (ierr);
-        ierr = nc_get_vara_double (ncid, id, start, count, a);
-        ERR (ierr);
+        nc_inq_varid (ncid, varname, &id);
+
+        if (a_int != NULL)
+            nc_get_vara_int (ncid, id, start, count, a_int);
+        else
+            nc_get_vara_double (ncid, id, start, count, a_double);
 
 #ifndef USE_PARALLEL_NETCDF
     }
@@ -310,22 +318,60 @@ int readArray (
         int n, dims;
 
         if (rank == 0) {
-            ierr = nc_inq_varndims (ncid, id, &dims);
-            ERR (ierr);
+            nc_inq_varndims (ncid, id, &dims);
             n = count[0] - start[0];
 
             for (int i = 1; i < dims; i++) {
                 n *= count[i] - start[i]; } }
 
-        ierr = MPI_Scatter (
-                   &n, 1, MPI_INT, &n, 1, MPI_INT, 0, PETSC_COMM_WORLD);
-        ierr = MPI_Scatter (
-                   a, n, MPI_DOUBLE, a, n, MPI_DOUBLE, 0, PETSC_COMM_WORLD);
-        CHKERRQ (ierr); }
+        MPI_Scatter (
+            &n, 1, MPI_INT, &n, 1, MPI_INT, 0, PETSC_COMM_WORLD);
+
+        if (a_int != NULL)
+            MPI_Scatter (
+                a_int,
+                n,
+                MPI_INT,
+                a_int,
+                n,
+                MPI_INT,
+                0,
+                PETSC_COMM_WORLD);
+        else
+            MPI_Scatter (
+                a_double,
+                n,
+                MPI_DOUBLE,
+                a_double,
+                n,
+                MPI_DOUBLE,
+                0,
+                PETSC_COMM_WORLD); }
 
 #endif
 
-    PetscFunctionReturn (0); }
+    return (0); }
+
+
+int readArray_int (
+    const int     ncid,
+    const char*   varname,
+    const size_t* start,
+    const size_t* count,
+    int*          a_int) {
+    _readArray (ncid, varname, start, count, a_int, NULL);
+    return (0); }
+
+
+int readArray_double (
+    const int     ncid,
+    const char*   varname,
+    const size_t* start,
+    const size_t* count,
+    double*       a_double) {
+    _readArray (ncid, varname, start, count, NULL, a_double);
+    return (0); }
+
 
 int readArray1D (
     const int           ncid,

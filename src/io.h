@@ -6,6 +6,13 @@
 #include "petscdm.h"
 
 
+enum dimensions { TIME, ZDIM, YDIM, XDIM, NDIMS };
+extern const char* dimnames[NDIMS];
+
+enum fields { TIME_COORDINATE, Z_COORDINATE, FRICTION, NFIELDS };
+extern const char* fieldnames[NFIELDS];
+
+
 /* NetCDF error handler */
 #define ERRCODE 2
 #define ERR(e)                                                         \
@@ -57,12 +64,22 @@ int readArray1D (
     const int           n,
     PetscScalar*        a);
 
-int readArray (
+#define readArray(ncid, varname, start, count, a)         \
+    _Generic((a), int*: readArray_int, double*: readArray_double)(ncid, varname, start, count, a)
+
+int readArray_int (
     const int     ncid,
     const char*   varname,
     const size_t* start,
     const size_t* count,
-    PetscScalar*  a);
+    int*          a_int);
+
+int readArray_double (
+    const int     ncid,
+    const char*   varname,
+    const size_t* start,
+    const size_t* count,
+    double*       a_double);
 
 int write3D (
     const int           ncid,

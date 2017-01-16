@@ -10,16 +10,20 @@ static char help[] =
     "Input file:\n"
     "  -f <fname>  Input file, NetCDF4/HDF5 format, from WRF "
     "simulation\n"
-    "Mode:\n"
+    "Which time steps to process:\n"
     "  -s <n>      Skip <n> timesteps. Default: start from the first\n"
-    "  -n <n>      Process <n> timesteps, only. Default: all "
-    "timesteps\n"
+    "  -n <n>      Process <n> timesteps, only. Default: to the last"
+    "timestep\n"
+    "Mode:\n"
     "  -Q          Solve quasi-geostrophic omega equation, only\n"
-    "  -G          Solve generalized omega equations, only\n"
+    "  -G          Solve generalized omega equations, only\n\n";
+
+    /* TODO:
     "  -Z          Solve height tendency equations (default), and\n"
     "              generalized omega equations if they are not "
     "already\n"
     "              in the input file\n\n";
+    */
 
 #include "context.h"
 #include "io.h"
@@ -34,7 +38,7 @@ static PetscErrorCode command_line_options (
     char* fname, int* skip, int* steps, int* flags);
 
 static PetscErrorCode output_setup (
-    const int ncid, const int flags, Context ctx);
+    const int ncid, const int flags);
 
 
 int main (int argc, char* argv[]) {
@@ -49,8 +53,8 @@ int main (int argc, char* argv[]) {
     command_line_options (fname, &skip, &steps, &flags);
     file_open (fname, &ncid);
 
-    context_create (ncid, skip, &steps, &flags, &ctx);
-    output_setup (ncid, flags, ctx);
+    context_create (ncid, &skip, &steps, &flags, &ctx);
+    output_setup (ncid, flags);
 
     KSPCreate (PETSC_COMM_WORLD, &ksp);
     KSPSetDM (ksp, ctx->da);
@@ -66,6 +70,7 @@ int main (int argc, char* argv[]) {
             KSPSolve (ksp, NULL, NULL);
             KSPGetSolution (ksp, &x);
             write3D (ncid, t, OMEGA_QG_ID_STRING, x); }
+        //write3D (ncid, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
 
         if (flags & OMEGA_GENERALIZED) {
             KSPSetComputeOperators (ksp, omega_compute_operator, ctx);
@@ -152,7 +157,7 @@ static PetscErrorCode command_line_options (
 
 
 static PetscErrorCode output_setup (
-    const int ncid, const int flags, Context ctx) {
+    const int ncid, const int flags) {
 
     file_redef (ncid);
 

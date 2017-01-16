@@ -1,7 +1,6 @@
 #include "constants.h"
 #include "context.h"
-#include "derivatives.h"
-#include "field.h"
+#include "ops.h"
 #include "omegaQG.h"
 #include "petscdmda.h"
 #include "petscksp.h"
@@ -195,8 +194,13 @@ extern int geostrophic_wind (Vec Vvec, Context ctx) {
 
 extern PetscErrorCode geostrophic_vorticity (
     Vec result, Vec V_g, Context ctx) {
+    DM           da  = ctx->da;
+    DM           da2 = ctx->da2;
+    size_t       my  = ctx->my;
+    PetscScalar  hx  = ctx->hx;
+    PetscScalar  hy  = ctx->hy;
 
-    horizontal_rotor (V_g, result, ctx);
+    horizontal_rotor (da, da2, my, hx, hy, V_g, result);
 
     return (0); }
 
@@ -266,6 +270,8 @@ extern PetscErrorCode omega_qg_compute_rhs (
     Context      ctx = (Context) ctx_p;
     DM           da2 = ctx->da2;
     DM           da  = ctx->da;
+    size_t       mz      = ctx->mz;
+    PetscScalar* p       = ctx->Pressure;
     Vec          T   = ctx->Temperature;
     PetscScalar* f   = ctx->Coriolis_parameter;
     Vec          V_g;
@@ -280,7 +286,7 @@ extern PetscErrorCode omega_qg_compute_rhs (
     geostrophic_vorticity (F, V_g, ctx);    // F = zeta_g
     field_array1d_add (F, f, DMDA_Y);       // (f+)
     horizontal_advection (F, V_g, ctx);     // (V_g \cdot \nabla)
-    fpder (F, ctx);                         // (f * d/dp)
+    fpder (da, mz, f, p, F);                // (f * d/dp)
 
     /* Temperature advection forcing F_T*/
     VecCopy (T, F_T);                        // F_T = T

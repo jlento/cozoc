@@ -1,8 +1,6 @@
-#include "context.h"
 #include "constants.h"
-#include "derivatives.h"
-#include "field.h"
-#include "io.h"
+#include "context.h"
+#include "ops.h"
 #include "omega.h"
 #include <petscdmda.h>
 #include <petscksp.h>
@@ -10,16 +8,15 @@
 #include "omega_stencil.inc"
 
 
-char* omega_component_id_string[N_OMEGA_COMPONENTS] = {"ome_v",
-                                                       "ome_t",
-                                                       "ome_f",
-                                                       "ome_q"};
+char* omega_component_id_string[N_OMEGA_COMPONENTS] = {
+    "ome_v", "ome_t", "ome_f", "ome_q", "ome_a" };
 
 PetscErrorCode (*omega_compute_rhs[N_OMEGA_COMPONENTS]) (
     KSP ksp, Vec b, void* ctx_p) = {omega_compute_rhs_F_V,
                                     omega_compute_rhs_F_T,
                                     omega_compute_rhs_F_F,
-                                    omega_compute_rhs_F_Q};
+                                    omega_compute_rhs_F_Q,
+                                    omega_compute_rhs_F_A };
 
 
 /* *
@@ -123,6 +120,9 @@ extern PetscErrorCode omega_compute_rhs_F_V (
     KSP ksp, Vec b, void* ctx_p) {
 
     Context      ctx  = (Context) ctx_p;
+    DM           da   = ctx->da;
+    size_t       mz   = ctx->mz;
+    PetscScalar* p    = ctx->Pressure;
     Vec          zeta = ctx->Vorticity;
     Vec          V    = ctx->Horizontal_wind;
     PetscScalar* f    = ctx->Coriolis_parameter;
@@ -134,7 +134,7 @@ extern PetscErrorCode omega_compute_rhs_F_V (
     field_array1d_add (b, f, DMDA_Y);
     horizontal_advection (b, V, ctx);
     /* TODO: surface factor */
-    fpder (b, ctx);
+    fpder (da, mz, f, p, b);
     VecScale (b, hx * hy * hz);
     /*        write3Ddump(ctx,"b",b); */
 
@@ -151,12 +151,12 @@ extern PetscErrorCode omega_compute_rhs_F_V (
 extern PetscErrorCode omega_compute_rhs_F_T (
     KSP ksp, Vec b, void* ctx_p) {
 
-    Context      ctx = (Context) ctx_p;
-    Vec          T   = ctx->Temperature;
-    Vec          V   = ctx->Horizontal_wind;
-    PetscScalar  hx  = ctx->hx;
-    PetscScalar  hy  = ctx->hy;
-    PetscScalar  hz  = ctx->hz;
+    Context     ctx = (Context) ctx_p;
+    Vec         T   = ctx->Temperature;
+    Vec         V   = ctx->Horizontal_wind;
+    PetscScalar hx  = ctx->hx;
+    PetscScalar hy  = ctx->hy;
+    PetscScalar hz  = ctx->hz;
 
     VecCopy (T, b);
     horizontal_advection (b, V, ctx);
@@ -178,15 +178,21 @@ extern PetscErrorCode omega_compute_rhs_F_T (
 extern PetscErrorCode omega_compute_rhs_F_F (
     KSP ksp, Vec b, void* ctx_p) {
 
-    Context      ctx  = (Context) ctx_p;
-    Vec          F    = ctx->Friction;
-    PetscScalar  hx   = ctx->hx;
-    PetscScalar  hy   = ctx->hy;
-    PetscScalar  hz   = ctx->hz;
+    Context      ctx = (Context) ctx_p;
+    DM           da  = ctx->da;
+    DM           da2 = ctx->da2;
+    size_t       my  = ctx->my;
+    size_t       mz  = ctx->mz;
+    PetscScalar* p   = ctx->Pressure;
+    PetscScalar* f   = ctx->Coriolis_parameter;
+    Vec          F   = ctx->Friction;
+    PetscScalar  hx  = ctx->hx;
+    PetscScalar  hy  = ctx->hy;
+    PetscScalar  hz  = ctx->hz;
 
-    horizontal_rotor (F, b, ctx);
-    fpder (b, ctx);
-    VecScale (b, - hx * hy * hz);
+    horizontal_rotor (da, da2, my, hx, hy, F, b);
+    fpder (da, mz, f, p, b);
+    VecScale (b, -hx * hy * hz);
 
     return (0); }
 
@@ -194,23 +200,61 @@ extern PetscErrorCode omega_compute_rhs_F_F (
 /* *
  * Diabatic heating forcing
  *
- * F_Q = -\frac{R}{c_p p} \nabla^2 ( \mathbf{V} \cdot \nabla \mathbf{T} )
+ * F_Q = -\frac{R}{c_p p} \nabla^2 ( \mathbf{V} \cdot \nabla \mathbf{T}
+ * )
  *
  */
 
 extern PetscErrorCode omega_compute_rhs_F_Q (
     KSP ksp, Vec b, void* ctx_p) {
 
-    Context      ctx = (Context) ctx_p;
-    Vec          Q   = ctx->Diabatic_heating;
-    PetscScalar  hx  = ctx->hx;
-    PetscScalar  hy  = ctx->hy;
-    PetscScalar  hz  = ctx->hz;
-    PetscScalar  c_p = Specific_heat_of_dry_air;
+    Context     ctx = (Context) ctx_p;
+    Vec         Q   = ctx->Diabatic_heating;
+    PetscScalar hx  = ctx->hx;
+    PetscScalar hy  = ctx->hy;
+    PetscScalar hz  = ctx->hz;
+    PetscScalar c_p = Specific_heat_of_dry_air;
 
     VecCopy (Q, b);
     plaplace (b, ctx);
-    VecScale (b, - hx * hy * hz / c_p);
+    VecScale (b, -hx * hy * hz / c_p);
 
     return (0); }
 
+
+/* *
+ * Ageostrophic vorticity tendency forcing
+ *
+ * F_A = \left[
+ *           f \frac{\partial}{\partial p} \left(
+ *               \frac{\partial \zeta}{\partial t} \right)
+ *           + \frac{R}{p} \nabla^2 \frac{\partial T}{\partial t}
+ *       \right]
+ */
+
+extern PetscErrorCode omega_compute_rhs_F_A (
+    KSP ksp, Vec b, void* ctx_p) {
+
+    Context      ctx     = (Context) ctx_p;
+    DM           da      = ctx->da;
+    size_t       mz      = ctx->mz;
+    PetscScalar* p       = ctx->Pressure;
+    PetscScalar* f       = ctx->Coriolis_parameter;
+    Vec          dzetadt = ctx->Vorticity_tendency;
+    Vec          dTdt    = ctx->Temperature_tendency;
+    PetscScalar  hx      = ctx->hx;
+    PetscScalar  hy      = ctx->hy;
+    PetscScalar  hz      = ctx->hz;
+    Vec          tmpvec;
+
+    DMGetGlobalVector (da, &tmpvec);
+    VecCopy (dTdt, b);
+    plaplace (b, ctx);
+    VecCopy (dzetadt, tmpvec);
+
+    fpder (da, mz, f, p, tmpvec);
+    VecAXPY (b, 1.0, tmpvec);
+    DMRestoreGlobalVector (da, &tmpvec);
+    VecScale (b, hx * hy * hz);
+
+    return (0); }
