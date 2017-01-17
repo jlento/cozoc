@@ -121,13 +121,21 @@ fields.
 Building and testing COZOC in Cray XC40
 ---------------------------------------
 
-*NOTE: This chapter is outdated and under construction!!!*
+*NOTE: This chapter is under construction!!!*
 
-The parallel version of Netcdf4/HDF5 is already provided, so:
+*NOTE: Should definitely write Toolchain files for cmake in Cray*
 
-    module swap PrgEnv-gnu/5.2.82 PrgEnv-gnu
-    module load cray-petsc cray-hdf5-parallel cray-netcdf-hdf5parallel
-    make -f ../cozoc/makefile test MPIEXEC=aprun
+INTEL:
+
+    cmake .. -DCMAKE_C_FLAGS_RELEASE="-std=gnu99" \
+        -DPETSC_INCLUDE_DIR= -DNETCDF_INCLUDE_DIR= \
+	    -DNETCDF_LIBRARY= -DPETSC_LIBRARY= -DUSE_PARALLEL_NETCDF=1 \
+		-DCMAKE_SYSTEM_NAME=Cray -DCMAKE_C_COMPILER=cc
+
+GNU & CRAY:
+
+    cmake .. -DPETSC_INCLUDE_DIR= -DNETCDF_INCLUDE_DIR= \
+        -DNETCDF_LIBRARY= -DPETSC_LIBRARY= -DUSE_PARALLEL_NETCDF=1
 
 
 TODO:
