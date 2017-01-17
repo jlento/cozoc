@@ -9,11 +9,14 @@ find_netcdf_par_h ()
 
 set (CMAKE_C_COMPILER ${MPI_C_COMPILER})
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-  set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -pedantic")
+if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+  if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -pedantic")
+  endif ()
 endif ()
 
 include_directories (
+  ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
   ${PETSC_INCLUDE_DIR}
   ${NETCDF_INCLUDE_DIR} )
@@ -34,11 +37,3 @@ add_executable (cozoc constants.c context.c
   utils.c)
 
 target_link_libraries (cozoc m)
-
-add_custom_command( OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.inc
-  COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.py > ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.inc
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.py
-  COMMENT "Generating source code" )
-add_custom_target(omega_stencil
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/omega_stencil.inc)
-add_dependencies(cozoc omega_stencil)
