@@ -35,60 +35,6 @@ static char help[] =
 
 
 static PetscErrorCode command_line_options (
-    char* fname, int* skip, int* steps, int* flags);
-
-static PetscErrorCode output_setup (
-    const int ncid, const int flags);
-
-
-int main (int argc, char* argv[]) {
-    char    fname[PETSC_MAX_PATH_LEN] = "wrf.nc4";
-    int     flags                     = 0;
-    int     skip = 0, steps = INT_MAX, ncid;
-    KSP     ksp;
-    Vec     x;
-    Context ctx;
-
-    PetscInitialize (&argc, &argv, NULL, help);
-    command_line_options (fname, &skip, &steps, &flags);
-    file_open (fname, &ncid);
-
-    context_create (ncid, &skip, &steps, &flags, &ctx);
-    output_setup (ncid, flags);
-
-    KSPCreate (PETSC_COMM_WORLD, &ksp);
-    KSPSetDM (ksp, ctx->da);
-    KSPSetFromOptions (ksp);
-
-    for (int t = skip; t < skip + steps; t++) {
-        context_update (ncid, t, ctx);
-
-        if (flags & OMEGA_QUASI_GEOSTROPHIC) {
-            KSPSetComputeOperators (
-                ksp, omega_qg_compute_operator, ctx);
-            KSPSetComputeRHS (ksp, omega_qg_compute_rhs, ctx);
-            KSPSolve (ksp, NULL, NULL);
-            KSPGetSolution (ksp, &x);
-            write3D (ncid, t, OMEGA_QG_ID_STRING, x); }
-        //write3D (ncid, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
-
-        if (flags & OMEGA_GENERALIZED) {
-            KSPSetComputeOperators (ksp, omega_compute_operator, ctx);
-
-            for (int i = 0; i < N_OMEGA_COMPONENTS; i++) {
-                KSPSetComputeRHS (ksp, omega_compute_rhs[i], ctx);
-                KSPSolve (ksp, NULL, NULL);
-                KSPGetSolution (ksp, &x);
-                write3D (ncid, t, omega_component_id_string[i], x); } } }
-
-    KSPDestroy (&ksp);
-    context_destroy (&ctx);
-    file_close (ncid);
-    PetscFinalize ();
-    return 0; }
-
-
-static PetscErrorCode command_line_options (
     char* fname, int* skip, int* steps, int* flags) {
 
     PetscBool calc_Q = PETSC_FALSE;
@@ -171,3 +117,50 @@ static PetscErrorCode output_setup (
     file_enddef (ncid);
 
     return (0); }
+
+
+int main (int argc, char* argv[]) {
+    char    fname[PETSC_MAX_PATH_LEN] = "wrf.nc4";
+    int     flags                     = 0;
+    int     skip = 0, steps = INT_MAX, ncid;
+    KSP     ksp;
+    Vec     x;
+    Context ctx;
+
+    PetscInitialize (&argc, &argv, NULL, help);
+    command_line_options (fname, &skip, &steps, &flags);
+    file_open (fname, &ncid);
+
+    context_create (ncid, &skip, &steps, &flags, &ctx);
+    output_setup (ncid, flags);
+
+    KSPCreate (PETSC_COMM_WORLD, &ksp);
+    KSPSetDM (ksp, ctx->da);
+    KSPSetFromOptions (ksp);
+
+    for (int t = skip; t < skip + steps; t++) {
+        context_update (ncid, t, ctx);
+
+        if (flags & OMEGA_QUASI_GEOSTROPHIC) {
+            KSPSetComputeOperators (
+                ksp, omega_qg_compute_operator, ctx);
+            KSPSetComputeRHS (ksp, omega_qg_compute_rhs, ctx);
+            KSPSolve (ksp, NULL, NULL);
+            KSPGetSolution (ksp, &x);
+            write3D (ncid, t, OMEGA_QG_ID_STRING, x); }
+        //write3D (ncid, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
+
+        if (flags & OMEGA_GENERALIZED) {
+            KSPSetComputeOperators (ksp, omega_compute_operator, ctx);
+
+            for (int i = 0; i < N_OMEGA_COMPONENTS; i++) {
+                KSPSetComputeRHS (ksp, omega_compute_rhs[i], ctx);
+                KSPSolve (ksp, NULL, NULL);
+                KSPGetSolution (ksp, &x);
+                write3D (ncid, t, omega_component_id_string[i], x); } } }
+
+    KSPDestroy (&ksp);
+    context_destroy (&ctx);
+    file_close (ncid);
+    PetscFinalize ();
+    return 0; }

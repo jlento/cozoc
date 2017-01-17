@@ -64,9 +64,6 @@ int readArray1D (
     const int           n,
     PetscScalar*        a);
 
-#define readArray(ncid, varname, start, count, a)         \
-    _Generic((a), int*: readArray_int, double*: readArray_double)(ncid, varname, start, count, a)
-
 int readArray_int (
     const int     ncid,
     const char*   varname,
@@ -87,6 +84,6 @@ int write3D (
     const char*         varname,
     Vec                 v);
 
-int write3Ddump (const char* varname, Vec v);
+int write3Ddump (const char* varname, const size_t mx, const size_t my, const size_t mz, Vec v);
 
 #endif

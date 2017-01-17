@@ -111,7 +111,7 @@ int context_create (
     {
         size_t start[1] = {0 };
         size_t count[1] = {ctx->mt };
-        readArray (
+        readArray_double (
             ncid,
             fieldnames[TIME_COORDINATE],
             start,
@@ -125,7 +125,7 @@ int context_create (
     {
         size_t start[1] = {0 };
         size_t count[1] = {ctx->mz };
-        readArray (
+        readArray_double (
             ncid,
             fieldnames[Z_COORDINATE],
             start,
@@ -137,7 +137,7 @@ int context_create (
     {
         size_t start[3] = {0, 0, 0 };
         size_t count[3] = {1, ctx->my, 1 };
-        readArray (
+        readArray_double (
             ncid,
             fieldnames[FRICTION],
             start,

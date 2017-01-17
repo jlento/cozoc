@@ -504,11 +504,11 @@ int write3D (
 
 #undef __FUNCT__
 #define __FUNCT__ "write3Ddump"
-int write3Ddump (const char* varname, Vec v) {
+int write3Ddump (const char* varname, size_t mx, size_t my, size_t mz, Vec v) {
     int            varid, ncid, ndims = 4;
     char           fname[256] = "";
     char*          dnames[4]  = {"TIME", "ZDIM", "YDIM", "XDIM" };
-    int            ds[4];
+    size_t         ds[4] = {1, mz, my, mx};
     int            dimids[4];
     PetscErrorCode ierr;
 
