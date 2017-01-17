@@ -5,12 +5,10 @@ function (find_netcdf_par_h)
     PATHS ${NETCDF_INCLUDE_DIRS})
 
   if (NETCDF_PAR_INCLUDE_DIR)
-    message (STATUS "  Found netcdf_par.h")
+    set (USE_PARALLEL_NETCDF ON CACHE BOOL "Use parallel NetCDF4/HDF5")
   else ()
-    message (STATUS "  Did not find netcdf_par.h")
     set (USE_PARALLEL_NETCDF OFF CACHE BOOL "Use parallel NetCDF4/HDF5")
   endif ()
-  unset (NETCDF_PAR_INCLUDE_DIR CACHE)
 
   if (USE_PARALLEL_NETCDF)
     message (STATUS "  Using parallel netcdf")
