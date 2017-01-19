@@ -23,32 +23,17 @@ Clone the COZOC GitHub repository:
 COZOC requirements
 ------------------
 
-Building COZOC requires GNU C compiler (gcc), CMake, and the following
+Building COZOC requires C compiler, CMake, and the following
 libraries:
 
 - MPI
 - PETSc
-- (Parallel) Netcdf/HDF5
-
-On regular Linux workstations these dependencies can be installed
-using the system's package manager. The names of the required packages
-for Ubuntu 16.04 LTS, for example, can be found from file
-[playbook.yml](playbook.yml), along with some of the development tools
-that I use.
-
-In practice, these libraries are readily available in supercomputer
-environments through environment module system. For example, in Cray
-XC40, the systems commands
-
-    module swap PrgEnv-cray PrgEnv-gnu
-    module load cmake cray-petsc
-    module load cray-hdf5-parallel cray-netcdf-hdf5parallel
-
-are enough to prepare the environment for building COZOC.
+- HDF5 (parallel)
+- NetCDF4/HDF5 (parallel)
 
 
-Testing and developing COZOC in a virtual machine
--------------------------------------------------
+Testing and developing COZOC in Ubuntu 16.04 LTS
+---------------------------------------------------------
 
 The easiest way to get started with COZOC is to clone the whole
 development environment. Install Git, VirtualBox and Vagrant on your
@@ -58,19 +43,54 @@ laptop (the host machine). Then:
 
 The first boot of the virtual machine takes a while. After the dust
 has settled, you should have Ubuntu 16.04 LTS virtual machine running
-in the background, with all packages necessary for testing and
-developing COZOC already installed.
+in the background, with most of the packages necessary for testing and
+developing COZOC already installed. See files [Vagrantfile](Vagrantfile)
+and[playbook.yml](playbook.yml).
+
+Login to the virtual machine with
+
+    vagrant ssh -- -Y
+
+At the time of writing, Ubuntu/Debian does have a package for the parallel
+version of HDF5, but not for NetCDF4, which needs to be compiled separately
+from the sources. If parallel version of NetCDF4/HDF5 library needs to be
+build from the sources, build and install it into the cozoc build directory
+using the provided [netcdf4.bash](netcdf4.bash) script:
+
+    cd /vagrant/build
+    bash ../netcdf4.bash
 
 
 Configure COZOC with CMake
--------------------------
+-------------------------------
 
-COZOC is configured as usual with CMake:
+COZOC build is configured using CMake. In the provided virtual machine,
+with the NetCDF4 library build from sources as described above,
 
     cd build
     cmake ..
+    
+should work.
 
-The configuration should work out of the box in the provided virtual machine.
+If cmake cannot auto-detect the location of the PETSc or NetCDF4 libraries,
+you can set environment variables PETSC_DIR or NETCDF_DIR, to give cmake
+a hint where to search for the libraries. For example,
+
+    NETCDF_DIR=$HOME/my-netcdf cmake ..
+
+In supercomputer environments the libraries are often made available through
+environment module system. For example, in Cray XC40, the commands
+
+    module swap PrgEnv-cray PrgEnv-gnu
+    module load cmake cray-petsc
+    module load cray-hdf5-parallel cray-netcdf-hdf5parallel
+
+set up the environment for building COZOC. As the compile wrapper `cc` now
+takes care of the compile and link flags, we need to 
+
+
+
+
 Tips for configuring in other environments are provided below.
 
 

@@ -1,11 +1,8 @@
 include (ide_support)
-include (netcdf)
 
-find_package (MPI)
-find_package (PETSC)
-find_package (NETCDF)
-
-find_netcdf_par_h ()
+find_package (MPI REQUIRED)
+find_package (PETSC REQUIRED)
+find_package (NETCDF REQUIRED)
 
 set (CMAKE_C_COMPILER ${MPI_C_COMPILER})
 
@@ -24,10 +21,6 @@ include_directories (
 link_libraries (
   ${PETSC_LIBRARY}
   ${NETCDF_LIBRARY} )
-
-configure_file (
-  ${CMAKE_CURRENT_SOURCE_DIR}/config.h.in
-  ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 write_dir_locals ()
 write_clang_complete_cflags ()
