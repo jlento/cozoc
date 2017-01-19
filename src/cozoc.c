@@ -139,6 +139,8 @@ int main (int argc, char* argv[]) {
     KSPSetFromOptions (ksp);
 
     for (int t = skip; t < skip + steps; t++) {
+        PetscPrintf (PETSC_COMM_WORLD, "Time step: %d\n", t);
+
         context_update (ncid, t, ctx);
 
         if (flags & OMEGA_QUASI_GEOSTROPHIC) {

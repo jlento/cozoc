@@ -119,6 +119,16 @@ After CMake configuration, just type
 to build COZOC. In case of troubles, first try `make VERBOSE=1`.
 
 
+## Running COZOC
+
+In Ubuntu 16.04 LTS:
+
+    mpiexec -n 3 -mca btl ^openib ./src/cozoc -Q -G
+
+In Cray XC40:
+
+    aprun -n 3 ./src/cozoc -Q -G
+
 ## Spacemacs C IDE
 
 The project includes `.spacemacs` configuration file that can be used

@@ -198,7 +198,7 @@ int write3D (
     count[2] = ym;
     count[3] = xm;
     nc_inq_varid (ncid, varname, &id);
-    // ierr = nc_var_par_access(ncid,id,NC_COLLECTIVE);ERR(ierr);
+    nc_var_par_access(ncid,id,NC_COLLECTIVE);
     nc_put_vara_double (
         ncid, id, start, count, &a[start[1]][start[2]][start[3]]);
     DMDAVecRestoreArray (da, v, &a);
