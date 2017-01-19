@@ -1,4 +1,3 @@
-#include "config.h"
 #include "io.h"
 #include "netcdf.h"
 #include "netcdf_par.h"

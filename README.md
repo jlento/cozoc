@@ -1,27 +1,23 @@
-COZOC
-=====
+# COZOC
 
 Cozoc is parallel re-implementation of [OZO](https://github.com/mikarant/ozo).
 
 
-Status
-------
+## Status
 
 - Computes the quasi-geostrophic omega equation and the first term
   (vorticity advection) of the generalized omega equation, only
 - very much under construction...
 
 
-Obtaining COZOC source
-----------------------
+## Obtaining COZOC source
 
 Clone the COZOC GitHub repository:
 
     git clone https://jlento@bitbucket.org/jlento/cozoc.git
 
 
-COZOC requirements
-------------------
+## COZOC requirements
 
 Building COZOC requires C compiler, CMake, and the following
 libraries:
@@ -32,8 +28,7 @@ libraries:
 - NetCDF4/HDF5 (parallel)
 
 
-Testing and developing COZOC in Ubuntu 16.04 LTS
----------------------------------------------------------
+## Testing and developing COZOC in Ubuntu 16.04 LTS
 
 The easiest way to get started with COZOC is to clone the whole
 development environment. Install Git, VirtualBox and Vagrant on your
@@ -51,26 +46,36 @@ Login to the virtual machine with
 
     vagrant ssh -- -Y
 
+The `cozoc` source directory in the host machine is shared with the
+virtual machine. In the virtual machine it is visible as a directory
+`/vagrant`. 
+
+It is a good practice to have separate source and build directories
+(out-of-source builds). Let's create a build directory and continue in it,
+with for example,
+
+    mkdir $HOME/build
+    cd $_
+
 At the time of writing, Ubuntu/Debian does have a package for the parallel
 version of HDF5, but not for NetCDF4, which needs to be compiled separately
 from the sources. If parallel version of NetCDF4/HDF5 library needs to be
-build from the sources, build and install it into the cozoc build directory
-using the provided [netcdf4.bash](netcdf4.bash) script:
+build from the sources, you can use the provided [netcdf4.bash](netcdf4.bash)
+script:
 
-    cd /vagrant/build
-    bash ../netcdf4.bash
+    bash /vagrant/netcdf4.bash
 
 
-Configure COZOC with CMake
--------------------------------
+## Configure COZOC build with CMake
+
+### In Ubuntu 16.04 LTS
 
 COZOC build is configured using CMake. In the provided virtual machine,
 with the NetCDF4 library build from sources as described above,
 
-    cd build
-    cmake ..
+    cmake /vagrant
     
-should work.
+command in the build directory should configure COZOC automatically.
 
 If cmake cannot auto-detect the location of the PETSc or NetCDF4 libraries,
 you can set environment variables PETSC_DIR or NETCDF_DIR, to give cmake
@@ -78,24 +83,34 @@ a hint where to search for the libraries. For example,
 
     NETCDF_DIR=$HOME/my-netcdf cmake ..
 
+### In Cray XC40
+
 In supercomputer environments the libraries are often made available through
 environment module system. For example, in Cray XC40, the commands
 
-    module swap PrgEnv-cray PrgEnv-gnu
     module load cmake cray-petsc
     module load cray-hdf5-parallel cray-netcdf-hdf5parallel
 
 set up the environment for building COZOC. As the compile wrapper `cc` now
-takes care of the compile and link flags, we need to 
+takes care of the compile and link flags, we need to instruct cmake not to
+try to add all the flags a second time. Depending on the loaded compile
+environment, the cmake command could be
+
+INTEL:
+
+    cmake .. -DCMAKE_C_FLAGS_RELEASE="-std=gnu99" \
+        -DPETSC_INCLUDE_DIR= -DNETCDF_INCLUDE_DIR= \
+	    -DNETCDF_LIBRARY= -DPETSC_LIBRARY= \
+		-DCMAKE_SYSTEM_NAME=Cray -DCMAKE_C_COMPILER=cc
+
+GNU & CRAY:
+
+    cmake .. -DPETSC_INCLUDE_DIR= -DNETCDF_INCLUDE_DIR= \
+        -DNETCDF_LIBRARY= -DPETSC_LIBRARY=
 
 
 
-
-Tips for configuring in other environments are provided below.
-
-
-Building COZOC
----------------
+## Building COZOC
 
 After CMake configuration, just type
 
@@ -104,8 +119,7 @@ After CMake configuration, just type
 to build COZOC. In case of troubles, first try `make VERBOSE=1`.
 
 
-Spacemacs C IDE
-----------------
+## Spacemacs C IDE
 
 The project includes `.spacemacs` configuration file that can be used
 with [Spacemacs](http://spacemacs.org).
@@ -116,54 +130,7 @@ packages. Thus, to get the full features of the Spacemacs C IDE working, run the
 CMake configuration first.
 
 
-Building parallel NetCDF4/HDF5
--------------------------------
-
-*NOTE: This chapter is outdated and under construction!!!*
-
-Basic ubuntu repositories do not(?) have the parallel Netcdf4/HDF5, so
-we need to build that library first from the sources:
-
-    mkdir -p build
-    cd $_
-    make -f ../cozoc/makefile netcdf
-
-With netcdf in place
-
-    make -f ../cozoc/makefile test
-
-should build cozoc executable, load the test input file from a WRF
-simulation, and run cozoc generating the omega and height-tendency
-fields.
-
-
-
-Building and testing COZOC in Cray XC40
----------------------------------------
-
-*NOTE: This chapter is under construction!!!*
-
-*NOTE: Should definitely write Toolchain files for cmake in Cray*
-
-INTEL:
-
-    cmake .. -DCMAKE_C_FLAGS_RELEASE="-std=gnu99" \
-        -DPETSC_INCLUDE_DIR= -DNETCDF_INCLUDE_DIR= \
-	    -DNETCDF_LIBRARY= -DPETSC_LIBRARY= -DUSE_PARALLEL_NETCDF=1 \
-		-DCMAKE_SYSTEM_NAME=Cray -DCMAKE_C_COMPILER=cc
-
-GNU & CRAY:
-
-    cmake .. -DPETSC_INCLUDE_DIR= -DNETCDF_INCLUDE_DIR= \
-        -DNETCDF_LIBRARY= -DPETSC_LIBRARY= -DUSE_PARALLEL_NETCDF=1
-
-
-TODO:
------
+## TODO:
 
 - omegaQG.c was written before omega.c. Now omegaQC should be updated to
   same style and using the same subroutines as omega.
-- drop vecops.c?
-- put wrf netcdf input file field names into wrfnc.h and wrfnc.c files,
-  similar to dimension names
-
