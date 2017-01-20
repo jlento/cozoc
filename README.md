@@ -5,8 +5,8 @@ Cozoc is parallel re-implementation of [OZO](https://github.com/mikarant/ozo).
 
 ## Status
 
-- Computes the quasi-geostrophic omega equation and the first term
-  (vorticity advection) of the generalized omega equation, only
+- Computes the quasi-geostrophic omega equation and the generalized
+  omega equation
 - very much under construction...
 
 
@@ -118,6 +118,21 @@ After CMake configuration, just type
 
 to build COZOC. In case of troubles, first try `make VERBOSE=1`.
 
+
+## Preparing the input file
+
+Currently COZOC can be used to analyse WRF simulations run on rectangular
+grid, such as the baroclinic wave test case. Before the WRF output can be
+processed by COZOC,
+
+1. the fields need to be interpolated to the pressure levels
+
+    TODO: <wrfinterp command here>
+    
+2. the file needs to be converted to NetCDF4/HDF5 format
+
+    nccopy -k nc4 <input> <output>
+    
 
 ## Running COZOC
 
