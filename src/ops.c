@@ -38,40 +38,6 @@ int field_array1d_add (
     return (0); }
 
 
-int field_array2d_add (
-    Vec x, PetscScalar** arr, DMDADirection direction) {
-
-    DM             da;
-    PetscInt       i, j, k, zs, ys, xs, zm, ym, xm;
-    PetscScalar*** xa;
-
-    VecGetDM (x, &da);
-    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
-    DMDAVecGetArray (da, x, &xa);
-
-    switch (direction) {
-    case DMDA_X:
-        for (k = zs; k < zs + zm; k++) {
-            for (j = ys; j < ys + ym; j++) {
-                for (i = xs; i < xs + xm; i++) {
-                    xa[k][j][i] += arr[j][k]; } } }
-
-    case DMDA_Y:
-        for (k = zs; k < zs + zm; k++) {
-            for (j = ys; j < ys + ym; j++) {
-                for (i = xs; i < xs + xm; i++) {
-                    xa[k][j][i] += arr[i][k]; } } }
-
-    case DMDA_Z:
-        for (k = zs; k < zs + zm; k++) {
-            for (j = ys; j < ys + ym; j++) {
-                for (i = xs; i < xs + xm; i++) {
-                    xa[k][j][i] += arr[i][j]; } } } }
-
-    DMDAVecRestoreArray (da, x, &xa);
-    return (0); }
-
-
 int diff1d (
     const int n, PetscScalar* x, PetscScalar* f, PetscScalar* dfdx) {
 

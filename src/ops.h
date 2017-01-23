@@ -5,16 +5,8 @@
 #include "petscvec.h"
 #include <petscdmda.h>
 
-#define FIELD_ARRAY_ADD(x, arr, direction)                              \
-    _Generic((arr),                                                     \
-             PetscScalar*: field_array1d_add,                           \
-             PetscScalar** : field_array2d_add) (x, arr, direction)
-
 int field_array1d_add (
     Vec x, PetscScalar* arr, DMDADirection direction);
-
-int field_array2d_add (
-    Vec x, PetscScalar** arr, DMDADirection direction);
 
 int diff1d (
     const int n, PetscScalar* x, PetscScalar* f, PetscScalar* dfdx);
