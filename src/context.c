@@ -3,7 +3,7 @@
 #include "daslice.h"
 #include "ops.h"
 #include "io.h"
-#include "utils.h"
+#include "defs.h"
 #include <math.h>
 #include <petscdmda.h>
 #include <petscksp.h>

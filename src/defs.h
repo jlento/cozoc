@@ -18,6 +18,4 @@
                 for (int i=LOOP_XS; i<LOOP_XS+LOOP_XM;        \
                      i++) {LOOP_EXPRESSION;}}}} while(0)
 
-int norm2_and_absmax (const char* name, Vec x);
-
 #endif

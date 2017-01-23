@@ -26,7 +26,6 @@ write_dir_locals ()
 write_clang_complete_cflags ()
 
 add_executable (cozoc constants.c context.c
-  cozoc.c daslice.c ops.c io.c omega.c omegaQG.c
-  utils.c)
+  cozoc.c daslice.c ops.c io.c omega.c omegaQG.c)
 
 target_link_libraries (cozoc m)
