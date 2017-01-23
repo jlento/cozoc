@@ -50,26 +50,10 @@ int read2D (
     const char*         varname,
     Vec                 v);
 
-/* Read 2d (lat,lon) slice from 4d NetCDF array (Time,lat,lon) */
-
 int file_read_attribute (
     const int ncid, const char* name, PetscScalar* attr);
 int file_read_int_attribute (
     const int ncid, const char* name, int* attr);
-
-int readArray1D (
-    const int           ncid,
-    const unsigned long time,
-    const char*         varname,
-    const int           n,
-    PetscScalar*        a);
-
-int readArray_int (
-    const int     ncid,
-    const char*   varname,
-    const size_t* start,
-    const size_t* count,
-    int*          a_int);
 
 int readArray_double (
     const int     ncid,

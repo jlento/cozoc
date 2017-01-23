@@ -118,59 +118,15 @@ int read2D (
     return (0); }
 
 
-int _readArray (
-    const int     ncid,
-    const char*   varname,
-    const size_t* start,
-    const size_t* count,
-    int*          a_int,
-    double*       a_double) {
-
-    int id;
-
-    nc_inq_varid (ncid, varname, &id);
-    if (a_int != NULL)
-        nc_get_vara_int (ncid, id, start, count, a_int);
-    else
-        nc_get_vara_double (ncid, id, start, count, a_double);
-    return (0); }
-
-
-int readArray_int (
-    const int     ncid,
-    const char*   varname,
-    const size_t* start,
-    const size_t* count,
-    int*          a_int) {
-    _readArray (ncid, varname, start, count, a_int, NULL);
-    return (0); }
-
-
 int readArray_double (
     const int     ncid,
     const char*   varname,
     const size_t* start,
     const size_t* count,
     double*       a_double) {
-    _readArray (ncid, varname, start, count, NULL, a_double);
-    return (0); }
-
-
-int readArray1D (
-    const int           ncid,
-    const unsigned long time,
-    const char*         varname,
-    const int           n,
-    PetscScalar*        a) {
-    size_t         start[2], count[2];
-    int            id;
-
-    start[0] = time;
-    start[1] = 0;
-    count[0] = 1;
-    count[1] = n;
+    int id;
     nc_inq_varid (ncid, varname, &id);
-    nc_get_vara_double (ncid, id, start, count, a);
+    nc_get_vara_double (ncid, id, start, count, a_double);
     return (0); }
 
 
