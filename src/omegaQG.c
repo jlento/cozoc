@@ -1,7 +1,7 @@
 #include "constants.h"
 #include "context.h"
-#include "ops.h"
 #include "omegaQG.h"
+#include "ops.h"
 #include "petscdmda.h"
 #include "petscksp.h"
 
@@ -18,7 +18,7 @@
 extern PetscErrorCode omega_qg_compute_operator (
     KSP ksp, Mat dummy, Mat L, void* ctx_p) {
 
-    Context      ctx = (Context) ctx_p;
+    Context*     ctx = (Context*) ctx_p;
     PetscScalar* p   = ctx->Pressure;
     PetscScalar* f   = ctx->Coriolis_parameter;
     Vec          T   = ctx->Temperature;
@@ -126,7 +126,7 @@ extern PetscErrorCode omega_qg_compute_operator (
  *       \right)
  */
 
-extern int geostrophic_wind (Vec Vvec, Context ctx) {
+extern int geostrophic_wind (Vec Vvec, Context* ctx) {
 
     DM           da   = ctx->da;
     DM           da2  = ctx->da2;
@@ -193,19 +193,19 @@ extern int geostrophic_wind (Vec Vvec, Context ctx) {
  */
 
 extern PetscErrorCode geostrophic_vorticity (
-    Vec result, Vec V_g, Context ctx) {
-    DM           da  = ctx->da;
-    DM           da2 = ctx->da2;
-    size_t       my  = ctx->my;
-    PetscScalar  hx  = ctx->hx;
-    PetscScalar  hy  = ctx->hy;
+    Vec result, Vec V_g, Context* ctx) {
+    DM          da  = ctx->da;
+    DM          da2 = ctx->da2;
+    size_t      my  = ctx->my;
+    PetscScalar hx  = ctx->hx;
+    PetscScalar hy  = ctx->hy;
 
     horizontal_rotor (da, da2, my, hx, hy, V_g, result);
 
     return (0); }
 
 
-extern PetscErrorCode surface_factor (Context ctx, Vec s) {
+extern PetscErrorCode surface_factor (Context* ctx, Vec s) {
 
     DM           da      = ctx->da;
     DM           daxy    = ctx->daxy;
@@ -267,11 +267,11 @@ extern PetscErrorCode surface_factor (Context ctx, Vec s) {
 extern PetscErrorCode omega_qg_compute_rhs (
     KSP ksp, Vec F, void* ctx_p) {
 
-    Context      ctx = (Context) ctx_p;
+    Context*     ctx = (Context*) ctx_p;
     DM           da2 = ctx->da2;
     DM           da  = ctx->da;
-    size_t       mz      = ctx->mz;
-    PetscScalar* p       = ctx->Pressure;
+    size_t       mz  = ctx->mz;
+    PetscScalar* p   = ctx->Pressure;
     Vec          T   = ctx->Temperature;
     PetscScalar* f   = ctx->Coriolis_parameter;
     Vec          V_g;

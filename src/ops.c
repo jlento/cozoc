@@ -151,7 +151,7 @@ int horizontal_rotor (
  * - one-sided derivatives at the north and south boundaries
  */
 
-int horizontal_advection (Vec bvec, Vec Vvec, Context ctx) {
+int horizontal_advection (Vec bvec, Vec Vvec, Context* ctx) {
 
     DM              da = ctx->da, da2 = ctx->da2;
     PetscScalar     wx = 0.5 / ctx->hx, wy = 0.5 / ctx->hy;
@@ -263,7 +263,7 @@ int fpder (
     return (0); }
 
 
-int horizontal_average (Context ctx, Vec v, PetscScalar v_ave[]) {
+int horizontal_average (Context* ctx, Vec v, PetscScalar v_ave[]) {
 
     DM             da;
     PetscInt       zs, ys, xs, zm, ym, xm, m, n;
@@ -311,7 +311,7 @@ int horizontal_average (Context ctx, Vec v, PetscScalar v_ave[]) {
  * - one-sided derivatives at the north and south boundaries
  */
 
-int plaplace (Vec inout, Context ctx) {
+int plaplace (Vec inout, Context* ctx) {
 
     DM             da = ctx->da;
     PetscScalar*   p  = ctx->Pressure;
@@ -335,8 +335,8 @@ int plaplace (Vec inout, Context ctx) {
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
 
     for (int k = zs; k < zs + zm; k++) {
-        double wx = R / (ctx->hx * ctx->hx * p[k]);
-        double wy = R / (ctx->hy * ctx->hy * p[k]);
+        double wx = R / (hx * hx * p[k]);
+        double wy = R / (hy * hy * p[k]);
 
         for (int j = ys; j < ys + ym; j++) {
             int j0, j1;

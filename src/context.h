@@ -33,7 +33,7 @@ typedef struct {
     Vec          Friction;
     Vec          Temperature_tendency;
     Vec          Vorticity_tendency;
-    Vec          omega[N_OMEGA_COMPONENTS]; } tContext, *Context;
+    Vec          omega[N_OMEGA_COMPONENTS]; } Context;
 
 
 int context_create (
@@ -41,6 +41,6 @@ int context_create (
 
 int context_destroy (Context* ctx);
 
-int context_update (const int ncid, const int step, Context ctx);
+int context_update (const int ncid, const int step, Context* ctx);
 
 #endif /* CONTEXT_H */

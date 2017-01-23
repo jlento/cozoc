@@ -135,28 +135,28 @@ int main (int argc, char* argv[]) {
     output_setup (ncid, flags);
 
     KSPCreate (PETSC_COMM_WORLD, &ksp);
-    KSPSetDM (ksp, ctx->da);
+    KSPSetDM (ksp, ctx.da);
     KSPSetFromOptions (ksp);
 
     for (int t = skip; t < skip + steps; t++) {
         PetscPrintf (PETSC_COMM_WORLD, "Time step: %d\n", t);
 
-        context_update (ncid, t, ctx);
+        context_update (ncid, t, &ctx);
 
         if (flags & OMEGA_QUASI_GEOSTROPHIC) {
             KSPSetComputeOperators (
-                ksp, omega_qg_compute_operator, ctx);
-            KSPSetComputeRHS (ksp, omega_qg_compute_rhs, ctx);
+                ksp, omega_qg_compute_operator, &ctx);
+            KSPSetComputeRHS (ksp, omega_qg_compute_rhs, &ctx);
             KSPSolve (ksp, NULL, NULL);
             KSPGetSolution (ksp, &x);
             write3D (ncid, t, OMEGA_QG_ID_STRING, x); }
         //write3D (ncid, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
 
         if (flags & OMEGA_GENERALIZED) {
-            KSPSetComputeOperators (ksp, omega_compute_operator, ctx);
+            KSPSetComputeOperators (ksp, omega_compute_operator, &ctx);
 
             for (int i = 0; i < N_OMEGA_COMPONENTS; i++) {
-                KSPSetComputeRHS (ksp, omega_compute_rhs[i], ctx);
+                KSPSetComputeRHS (ksp, omega_compute_rhs[i], &ctx);
                 KSPSolve (ksp, NULL, NULL);
                 KSPGetSolution (ksp, &x);
                 write3D (ncid, t, omega_component_id_string[i], x); } } }

@@ -10,11 +10,7 @@
 
 
 int context_create (
-    const int ncid, int* skip, int* steps, int* flags, Context* p_ctx) {
-
-    Context ctx;
-
-    ctx = *p_ctx = (Context) malloc (sizeof (tContext) );
+    const int ncid, int* skip, int* steps, int* flags, Context* ctx) {
 
     /* Open Input/output file and read the dimensions */
 
@@ -357,7 +353,7 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
 
 
 static int one_over_dry_air_mass_column (
-    Vec mu_inv, const int ncid, const int step, Context ctx) {
+    Vec mu_inv, const int ncid, const int step, Context* ctx) {
 
     DM  daxy = ctx->daxy;
     Vec tmp2d;
@@ -372,7 +368,7 @@ static int one_over_dry_air_mass_column (
 
 
 static int diabatic_heating (
-    Context ctx, const int ncid, const int step, Vec mvec) {
+    Context* ctx, const int ncid, const int step, Vec mvec) {
 
     DM            da         = ctx->da;
     DM            daxy       = ctx->daxy;
@@ -432,7 +428,7 @@ static int diabatic_heating (
 
 
 static int friction (
-    Context ctx, const int ncid, const int step, Vec mvec) {
+    Context* ctx, const int ncid, const int step, Vec mvec) {
 
     DM            da         = ctx->da;
     DM            da2        = ctx->da2;
@@ -479,7 +475,7 @@ static int friction (
     return (0); }
 
 
-int context_update (const int ncid, const int step, Context ctx) {
+int context_update (const int ncid, const int step, Context* ctx) {
 
     DM           da       = ctx->da;
     DM           da2      = ctx->da2;
@@ -547,9 +543,7 @@ int context_update (const int ncid, const int step, Context ctx) {
     return (0); }
 
 
-int context_destroy (Context* p_ctx) {
-
-    Context ctx = *p_ctx;
+int context_destroy (Context* ctx) {
 
     PetscFree (ctx->Pressure);
     PetscFree (ctx->Coriolis_parameter);
@@ -570,6 +564,5 @@ int context_destroy (Context* p_ctx) {
 
     //        ierr = KSPDestroy(&ctx->ksp);CHKERRQ(ierr);
     DMDestroy (&ctx->da);
-    free (ctx);
 
     return (0); }

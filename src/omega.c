@@ -1,7 +1,7 @@
 #include "constants.h"
 #include "context.h"
-#include "ops.h"
 #include "omega.h"
+#include "ops.h"
 #include <petscdmda.h>
 #include <petscksp.h>
 
@@ -27,7 +27,7 @@ PetscErrorCode (*omega_compute_rhs[N_OMEGA_COMPONENTS]) (
 extern PetscErrorCode omega_compute_operator (
     KSP ksp, Mat A, Mat B, void* ctx_p) {
 
-    Context              ctx = (Context) ctx_p;
+    Context*             ctx = (Context*) ctx_p;
     DM                   da  = ctx->da;
     DM                   da2 = ctx->da2;
     PetscScalar          hx  = ctx->hx;
@@ -119,7 +119,7 @@ extern PetscErrorCode omega_compute_operator (
 extern PetscErrorCode omega_compute_rhs_F_V (
     KSP ksp, Vec b, void* ctx_p) {
 
-    Context      ctx  = (Context) ctx_p;
+    Context*     ctx  = (Context*) ctx_p;
     DM           da   = ctx->da;
     size_t       mz   = ctx->mz;
     PetscScalar* p    = ctx->Pressure;
@@ -151,7 +151,7 @@ extern PetscErrorCode omega_compute_rhs_F_V (
 extern PetscErrorCode omega_compute_rhs_F_T (
     KSP ksp, Vec b, void* ctx_p) {
 
-    Context     ctx = (Context) ctx_p;
+    Context*    ctx = (Context*) ctx_p;
     Vec         T   = ctx->Temperature;
     Vec         V   = ctx->Horizontal_wind;
     PetscScalar hx  = ctx->hx;
@@ -178,7 +178,7 @@ extern PetscErrorCode omega_compute_rhs_F_T (
 extern PetscErrorCode omega_compute_rhs_F_F (
     KSP ksp, Vec b, void* ctx_p) {
 
-    Context      ctx = (Context) ctx_p;
+    Context*     ctx = (Context*) ctx_p;
     DM           da  = ctx->da;
     DM           da2 = ctx->da2;
     size_t       my  = ctx->my;
@@ -208,7 +208,7 @@ extern PetscErrorCode omega_compute_rhs_F_F (
 extern PetscErrorCode omega_compute_rhs_F_Q (
     KSP ksp, Vec b, void* ctx_p) {
 
-    Context     ctx = (Context) ctx_p;
+    Context*    ctx = (Context*) ctx_p;
     Vec         Q   = ctx->Diabatic_heating;
     PetscScalar hx  = ctx->hx;
     PetscScalar hy  = ctx->hy;
@@ -235,7 +235,7 @@ extern PetscErrorCode omega_compute_rhs_F_Q (
 extern PetscErrorCode omega_compute_rhs_F_A (
     KSP ksp, Vec b, void* ctx_p) {
 
-    Context      ctx     = (Context) ctx_p;
+    Context*     ctx     = (Context*) ctx_p;
     DM           da      = ctx->da;
     size_t       mz      = ctx->mz;
     PetscScalar* p       = ctx->Pressure;

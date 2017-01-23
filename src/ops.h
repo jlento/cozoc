@@ -28,13 +28,13 @@ int horizontal_rotor (
     Vec               Vvec,
     Vec               bvec);
 
-int horizontal_advection (Vec b, Vec V, Context ctx);
+int horizontal_advection (Vec b, Vec V, Context* ctx);
 
-int horizontal_average (Context ctx, Vec v, PetscScalar v_ave[]);
+int horizontal_average (Context* ctx, Vec v, PetscScalar v_ave[]);
 
 int fpder (
     DM da, PetscInt mz, PetscScalar* f, PetscScalar* p, Vec bvec);
 
-int plaplace (Vec inout, Context ctx);
+int plaplace (Vec inout, Context* ctx);
 
 #endif /* OPS_H */
