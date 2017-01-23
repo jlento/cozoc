@@ -1,6 +1,0 @@
-#ifndef CONFIG_H
-#define CONFIG_H
-
-#cmakedefine USE_PARALLEL_NETCDF
-
-#endif /* CONFIG_H */
