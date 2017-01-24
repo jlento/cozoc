@@ -320,7 +320,7 @@ you should place your code here."
     (interactive)
     (shell-command-on-region
      (point-min) (point-max)
-     "bash -c 'clang-format -style=file $1 | astyle -d --style=lisp --break-blocks' --"
+     "bash -c 'clang-format -style=file $1 | astyle -d --style=lisp --break-blocks --remove-brackets' --"
      (current-buffer) t
      (get-buffer-create "*AStyle-errors*") t))
   (global-set-key (kbd "C-c f") 'astyle-buffer)

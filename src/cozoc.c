@@ -18,12 +18,12 @@ static char help[] =
     "  -Q          Solve quasi-geostrophic omega equation, only\n"
     "  -G          Solve generalized omega equations, only\n\n";
 
-    /* TODO:
-    "  -Z          Solve height tendency equations (default), and\n"
-    "              generalized omega equations if they are not "
-    "already\n"
-    "              in the input file\n\n";
-    */
+/* TODO:
+"  -Z          Solve height tendency equations (default), and\n"
+"              generalized omega equations if they are not "
+"already\n"
+"              in the input file\n\n";
+*/
 
 #include "context.h"
 #include "io.h"
@@ -102,17 +102,16 @@ static PetscErrorCode command_line_options (
     return (0); }
 
 
-static PetscErrorCode output_setup (
-    const int ncid, const int flags) {
+static PetscErrorCode output_setup (const int ncid, const int flags) {
 
     file_redef (ncid);
 
-    if (flags & OMEGA_QUASI_GEOSTROPHIC) {
-        file_def_var (ncid, OMEGA_QG_ID_STRING); }
+    if (flags & OMEGA_QUASI_GEOSTROPHIC)
+        file_def_var (ncid, OMEGA_QG_ID_STRING);
 
     if (flags & OMEGA_GENERALIZED) {
-        for (int i = 0; i < N_OMEGA_COMPONENTS; i++) {
-            file_def_var (ncid, omega_component_id_string[i]); } }
+        for (int i = 0; i < N_OMEGA_COMPONENTS; i++)
+            file_def_var (ncid, omega_component_id_string[i]); }
 
     file_enddef (ncid);
 
@@ -150,7 +149,8 @@ int main (int argc, char* argv[]) {
             KSPSolve (ksp, NULL, NULL);
             KSPGetSolution (ksp, &x);
             write3D (ncid, t, OMEGA_QG_ID_STRING, x); }
-        //write3D (ncid, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
+
+        // write3D (ncid, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
 
         if (flags & OMEGA_GENERALIZED) {
             KSPSetComputeOperators (ksp, omega_compute_operator, &ctx);
