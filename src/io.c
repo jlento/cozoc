@@ -5,10 +5,6 @@
 #include <strings.h>
 
 
-/* If linked against sequential Netcdf4, only MPI rank 0 performs file
- * I/O */
-
-
 const char* dimnames[NDIMS] = {
     "time", "vlevs", "south_north", "west_east" };
 
