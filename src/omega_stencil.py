@@ -30,7 +30,7 @@ def def_fd(xyz, ijk, hxhyhz, nns):
     >>> x = Symbol('x')
     >>> i = Idx('i')
     >>> hx = Symbol('hx')
-    >>> D = make_D([x],{x:i},{x:hx},[-1,0,1])
+    >>> D = def_fd([x],{x:i},{x:hx},[-1,0,1])
     >>> D(f[i],x)
     -f[i - 1]/(2*hx) + f[i + 1]/(2*hx)
     >>> D(f[i],x,x)
