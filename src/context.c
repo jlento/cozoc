@@ -107,7 +107,7 @@ int context_create (
     {
         size_t start[1] = {0 };
         size_t count[1] = {ctx->mt };
-        readArray_double (
+        file_read_array_double (
             ncid,
             fieldnames[TIME_COORDINATE],
             start,
@@ -121,7 +121,7 @@ int context_create (
     {
         size_t start[1] = {0 };
         size_t count[1] = {ctx->mz };
-        readArray_double (
+        file_read_array_double (
             ncid,
             fieldnames[Z_COORDINATE],
             start,
@@ -133,7 +133,7 @@ int context_create (
     {
         size_t start[3] = {0, 0, 0 };
         size_t count[3] = {1, ctx->my, 1 };
-        readArray_double (
+        file_read_array_double (
             ncid,
             fieldnames[FRICTION],
             start,
@@ -165,15 +165,15 @@ static int temperature (
 
     if (step == skip) {
         if (step == 0) {
-            read3D (ncid, step, "TT", *T);
-            read3D (ncid, step + 1, "TT", *Tnext);
+            file_read_3d (ncid, step, "TT", *T);
+            file_read_3d (ncid, step + 1, "TT", *Tnext);
             VecCopy (*T, *Ttend);
             VecAXPY (*Ttend, -1.0, *Tnext);
             VecScale (*Ttend, -1.0 / (double) (t[step + 1] - t[step]) ); }
         else {
-            read3D (ncid, step - 1, "TT", *Ttend);
-            read3D (ncid, step, "TT", *T);
-            read3D (ncid, step + 1, "TT", *Tnext);
+            file_read_3d (ncid, step - 1, "TT", *Ttend);
+            file_read_3d (ncid, step, "TT", *T);
+            file_read_3d (ncid, step + 1, "TT", *Tnext);
             VecAXPY (*Ttend, -1.0, *Tnext);
             VecScale (
                 *Ttend, -1.0 / (double) (t[step + 1] - t[step - 1]) ); } }
@@ -188,7 +188,7 @@ static int temperature (
             *Ttend = *T;
             *T     = *Tnext;
             *Tnext = tmpvec;
-            read3D (ncid, step + 1, "TT", *Tnext);
+            file_read_3d (ncid, step + 1, "TT", *Tnext);
             VecAXPY (*Ttend, -1.0, *Tnext);
             VecScale (
                 *Ttend, -1.0 / (double) (t[step + 1] - t[step - 1]) ); } }
@@ -243,7 +243,7 @@ static int horizontal_wind_and_vorticity (
     Vec         zeta) {
     for (int i = 0; i < 2; i++) {
         char* name[2] = {"UU", "VV" };
-        read3D (ncid, step, name[i], tmpvec);
+        file_read_3d (ncid, step, name[i], tmpvec);
         VecStrideScatter (tmpvec, i, V, INSERT_VALUES); }
 
     horizontal_rotor (da, da2, my, hx, hy, V, zeta);
@@ -385,10 +385,10 @@ static int diabatic_heating (
 
     switch (cu_physics) {
     case 1:
-        read3D (ncid, step, "RTHCUTEN", Q);
-        read3D (ncid, step, "RTHRATEN", tmp3d);
+        file_read_3d (ncid, step, "RTHCUTEN", Q);
+        file_read_3d (ncid, step, "RTHRATEN", tmp3d);
         VecAXPY (Q, (PetscScalar) 1.0, tmp3d);
-        read3D (ncid, step, "RTHBLTEN", tmp3d);
+        file_read_3d (ncid, step, "RTHBLTEN", tmp3d);
         VecAXPY (Q, (PetscScalar) 1.0, tmp3d);
         break;
 
@@ -408,7 +408,7 @@ static int diabatic_heating (
     DMDAVecRestoreArray (da, Q, &qa);
     DMDAVecRestoreArrayRead (daxy, mvec, &ma);
 
-    read3D (ncid, step, "H_DIABATIC", tmp3d);
+    file_read_3d (ncid, step, "H_DIABATIC", tmp3d);
     VecAXPY (Q, (PetscScalar) 1.0, tmp3d);
 
     DMDAVecGetArray (da, Q, &qa);
@@ -443,13 +443,13 @@ static int friction (
 
     switch (cu_physics) {
     case 1:
-        read3D (ncid, step, "RUCUTEN", tmp3d);
+        file_read_3d (ncid, step, "RUCUTEN", tmp3d);
         VecStrideScatter (tmp3d, 0, F, INSERT_VALUES);
-        read3D (ncid, step, "RUBLTEN", tmp3d);
+        file_read_3d (ncid, step, "RUBLTEN", tmp3d);
         VecStrideScatter (tmp3d, 0, F, ADD_VALUES);
-        read3D (ncid, step, "RVCUTEN", tmp3d);
+        file_read_3d (ncid, step, "RVCUTEN", tmp3d);
         VecStrideScatter (tmp3d, 1, F, INSERT_VALUES);
-        read3D (ncid, step, "RVBLTEN", tmp3d);
+        file_read_3d (ncid, step, "RVBLTEN", tmp3d);
         VecStrideScatter (tmp3d, 1, F, ADD_VALUES);
         break;
 
@@ -510,7 +510,7 @@ int context_update (const int ncid, const int step, Context* ctx) {
         DMGetGlobalVector (daxy, &mu_inv); }
 
     read2D (ncid, step, "PSFC", psfc);
-    read3D (ncid, step, "GHT", Z);
+    file_read_3d (ncid, step, "GHT", Z);
     temperature (ncid, step, skip, mt, time, T, Ttend, &Tnext);
     sigma_parameter (da, mz, p, *T, sigma);
     horizontal_wind_and_vorticity_and_vorticity_tendency (

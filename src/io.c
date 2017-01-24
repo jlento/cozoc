@@ -64,7 +64,7 @@ PetscErrorCode file_read_int_attribute (
     return (0); }
 
 
-int read3D (
+int file_read_3d (
     const int           ncid,
     const unsigned long time,
     const char*         varname,
@@ -114,7 +114,7 @@ int read2D (
     return (0); }
 
 
-int readArray_double (
+int file_read_array_double (
     const int     ncid,
     const char*   varname,
     const size_t* start,

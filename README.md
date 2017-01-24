@@ -153,3 +153,10 @@ The above `cmake`-command also writes files `.clang_complete` and
 `.dir-locals.el` files to the project root, that are used by the Spacemacs
 packages. Thus, to get the full features of the Spacemacs C IDE working, run the
 CMake configuration first.
+
+
+## Coding style
+
+PETSc library functions are in `CamelCase`, COZOC application functions are in
+`snake_case`. Source code formatting is influenced more by Python and Lisp,
+where the curly braces have less visual emphasis, than the usual C styles.

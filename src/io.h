@@ -37,7 +37,7 @@ int file_get_dimsize (
 
 /* Read 3d (lev,lat,lon) slice from 4d NetCDF array (Time,lev,lat,lon)
  */
-int read3D (
+int file_read_3d (
     const int           ncid,
     const unsigned long time,
     const char*         varname,
@@ -55,7 +55,7 @@ int file_read_attribute (
 int file_read_int_attribute (
     const int ncid, const char* name, int* attr);
 
-int readArray_double (
+int file_read_array_double (
     const int     ncid,
     const char*   varname,
     const size_t* start,
