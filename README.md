@@ -40,7 +40,7 @@ The first boot of the virtual machine takes a while. After the dust
 has settled, you should have Ubuntu 16.04 LTS virtual machine running
 in the background, with most of the packages necessary for testing and
 developing COZOC already installed. See files [Vagrantfile](Vagrantfile)
-and[playbook.yml](playbook.yml).
+and [playbook.yml](playbook.yml).
 
 Login to the virtual machine with
 
@@ -66,7 +66,7 @@ script:
     bash /vagrant/netcdf4.bash
 
 
-## Configure COZOC build with CMake
+## Configure COZOC using CMake
 
 ### In Ubuntu 16.04 LTS
 
@@ -127,11 +127,11 @@ processed by COZOC,
 
 1. the fields need to be interpolated to the pressure levels
 
-    TODO: <wrfinterp command here>
+    TODO: `<wrfinterp command here>`
     
 2. the file needs to be converted to NetCDF4/HDF5 format
 
-    nccopy -k nc4 <input> <output>
+    `nccopy -k nc4 <input> <output>`
     
 
 ## Running COZOC
@@ -153,9 +153,3 @@ The above `cmake`-command also writes files `.clang_complete` and
 `.dir-locals.el` files to the project root, that are used by the Spacemacs
 packages. Thus, to get the full features of the Spacemacs C IDE working, run the
 CMake configuration first.
-
-
-## TODO:
-
-- omegaQG.c was written before omega.c. Now omegaQC should be updated to
-  same style and using the same subroutines as omega.
