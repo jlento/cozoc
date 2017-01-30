@@ -21,6 +21,6 @@ test -f $PKG || wget $URL
 test -d $DIR || tar xvf $PKG
 cd $DIR
 ./configure --prefix=${DESTDIR} \
-            CFLAGS="$(pkg-config --cflags hdf5)" \
-            LDFLAGS="$(pkg-config --libs hdf5)"
+            CFLAGS="$(pkg-config --cflags hdf5-openmpi)" \
+            LDFLAGS="$(pkg-config --libs hdf5-openmpi)"
 make install

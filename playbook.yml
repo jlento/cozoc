@@ -25,12 +25,6 @@
         - clang-format
         - astyle
 
-    - name: Disable ntp
-      become: true
-      service:
-        name: ntp
-        enabled: no
-        
     - name: COZOC requirements
       become: true
       apt: name="{{item}}" update_cache=yes cache_valid_time=3600
