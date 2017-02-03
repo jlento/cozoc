@@ -336,7 +336,8 @@ you should place your code here."
  ;; If there is more than one, they won't work right.
  '(safe-local-variable-values
    (quote
-    ((helm-make-build-dir . "/vagrant/build")
+    ((helm-make-build-dir . "/home/ubuntu/build")
+     (helm-make-build-dir . "/vagrant/build")
      (helm-make-build-dir . "build")))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
