@@ -48,7 +48,7 @@ Login to the virtual machine with
 
 The `cozoc` source directory in the host machine is shared with the
 virtual machine. In the virtual machine it is visible as a directory
-`/vagrant`. 
+`/vagrant`.
 
 It is a good practice to have separate source and build directories
 (out-of-source builds). Let's create a build directory and continue in it,
@@ -74,7 +74,7 @@ COZOC build is configured using CMake. In the provided virtual machine,
 with the NetCDF4 library build from sources as described above,
 
     cmake /vagrant
-    
+
 command in the build directory should configure COZOC automatically.
 
 If cmake cannot auto-detect the location of the PETSc or NetCDF4 libraries,
@@ -128,11 +128,11 @@ processed by COZOC,
 1. the fields need to be interpolated to the pressure levels
 
     TODO: `<wrfinterp command here>`
-    
+
 2. the file needs to be converted to NetCDF4/HDF5 format
 
     `nccopy -k nc4 <input> <output>`
-    
+
 
 ## Running COZOC
 
@@ -143,6 +143,39 @@ In Ubuntu 16.04 LTS:
 In Cray XC40:
 
     aprun -n 3 ./src/cozoc -Q -G
+
+
+## Profiling in Cray XC40 (...rough overview)
+
+Load performance profiling tools before building cozoc
+
+    module load perftools-base perftools
+
+and instrument (for sampling profile) code after build
+
+    pat_build src/cozoc
+
+Run
+
+    aprun -n 4 ./build/cozoc+pat -G
+
+Read the profile
+
+    pat_report cozoc+path+*
+
+To instrument the code for MPI message timeline profiling
+
+    path_build -g mpi,netcdf
+
+and run the tracing experiment
+
+    aprun -e PAT_RT_SUMMARY=0 -n 4 ./cozoc+pat -G
+
+and view results
+
+    pat_report *.xf
+    app2 *.ap2
+
 
 ## Spacemacs C IDE
 
