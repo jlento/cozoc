@@ -187,6 +187,19 @@ The above `cmake`-command also writes files `.clang_complete` and
 packages. Thus, to get the full features of the Spacemacs C IDE working, run the
 CMake configuration first.
 
+### Requirements
+
+- clang
+- clang-format
+- astyle
+-spacemacs
+
+    git clone https://github.com/syl20bnr/spacemacs ./.emacs.d
+
+### Use
+
+    HOME=/directory/where/.spacemacs/and/.emacs.s/are emacs &
+
 
 ## Coding style
 
