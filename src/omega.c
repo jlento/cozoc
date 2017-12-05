@@ -213,11 +213,10 @@ extern PetscErrorCode omega_compute_rhs_F_Q (
     PetscScalar hx  = ctx->hx;
     PetscScalar hy  = ctx->hy;
     PetscScalar hz  = ctx->hz;
-    PetscScalar c_p = Specific_heat_of_dry_air;
 
     VecCopy (Q, b);
     plaplace (b, ctx);
-    VecScale (b, -hx * hy * hz / c_p);
+    VecScale (b, -hx * hy * hz);
 
     return (0); }
 
