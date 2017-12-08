@@ -70,4 +70,6 @@ int write3D (
 
 int write3Ddump (const char* varname, const size_t mx, const size_t my, const size_t mz, Vec v);
 
+void handle_error(int status);
+
 #endif
