@@ -121,7 +121,7 @@ int file_read_array_double (
     const size_t* count,
     double*       a_double) {
     int id;
-    nc_inq_varid (ncid, varname, &id);
+    handle_error (nc_inq_varid (ncid, varname, &id) );
     nc_get_vara_double (ncid, id, start, count, a_double);
     return (0); }
 
