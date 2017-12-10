@@ -9,7 +9,7 @@
 enum dimensions { TIME, ZDIM, YDIM, XDIM, NDIMS };
 extern const char* dimnames[NDIMS];
 
-enum fields { TIME_COORDINATE, Z_COORDINATE, FRICTION, NFIELDS };
+enum fields { TIME_COORDINATE, Z_COORDINATE, CORIOLIS, NFIELDS };
 extern const char* fieldnames[NFIELDS];
 
 
@@ -69,5 +69,7 @@ int write3D (
     Vec                 v);
 
 int write3Ddump (const char* varname, const size_t mx, const size_t my, const size_t mz, Vec v);
+
+void handle_error(int status);
 
 #endif

@@ -135,7 +135,7 @@ int context_create (
         size_t count[3] = {1, ctx->my, 1 };
         file_read_array_double (
             ncid,
-            fieldnames[FRICTION],
+            fieldnames[CORIOLIS],
             start,
             count,
             ctx->Coriolis_parameter); }

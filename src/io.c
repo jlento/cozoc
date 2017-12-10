@@ -12,12 +12,12 @@ const char* fieldnames[NFIELDS] = {"XTIME", "LEV", "F" };
 
 
 PetscErrorCode file_open (const char* wrfin, int* ncid) {
-    nc_open_par (
+    handle_error ( nc_open_par (
         wrfin,
         NC_MPIIO | NC_NETCDF4 | NC_WRITE,
         PETSC_COMM_WORLD,
         MPI_INFO_NULL,
-        ncid);
+        ncid) );
     return (0); }
 
 
@@ -29,8 +29,8 @@ PetscErrorCode file_close (int ncid) {
 PetscErrorCode file_get_dimsize (
     const int ncid, const char* dimname, size_t* dimsize) {
     int dimid;
-    nc_inq_dimid (ncid, dimname, &dimid);
-    nc_inq_dimlen (ncid, dimid, dimsize);
+    handle_error ( nc_inq_dimid (ncid, dimname, &dimid) );
+    handle_error ( nc_inq_dimlen (ncid, dimid, dimsize) );
     return (0); }
 
 
@@ -121,7 +121,7 @@ int file_read_array_double (
     const size_t* count,
     double*       a_double) {
     int id;
-    nc_inq_varid (ncid, varname, &id);
+    handle_error (nc_inq_varid (ncid, varname, &id) );
     nc_get_vara_double (ncid, id, start, count, a_double);
     return (0); }
 
@@ -179,3 +179,11 @@ int write3Ddump (const char* varname, size_t mx, size_t my, size_t mz, Vec v) {
     write3D (ncid, (const unsigned long) 0, varname, v);
     nc_close (ncid);
     return (0); }
+
+void handle_error (int status) {
+    if (status != NC_NOERR) {
+        PetscPrintf(PETSC_COMM_WORLD,"Error in %s\n",nc_strerror(status));
+        PetscFinalize();
+        exit(0);
+    }
+}
