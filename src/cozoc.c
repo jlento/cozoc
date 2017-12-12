@@ -127,6 +127,7 @@ int main (int argc, char* argv[]) {
     Context ctx;
 
     PetscInitialize (&argc, &argv, NULL, help);
+    PetscPushErrorHandler(PetscMPIAbortErrorHandler,NULL);
     command_line_options (fname, &skip, &steps, &flags);
     file_open (fname, &ncid);
 

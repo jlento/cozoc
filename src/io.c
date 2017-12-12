@@ -2,8 +2,9 @@
 #include "netcdf.h"
 #include "netcdf_par.h"
 #include "petscdmda.h"
+#include "petscsys.h"
 #include <strings.h>
-
+#include <unistd.h>
 
 const char* dimnames[NDIMS] = {
     "time", "vlevs", "south_north", "west_east" };
@@ -12,13 +13,21 @@ const char* fieldnames[NFIELDS] = {"XTIME", "LEV", "F" };
 
 
 PetscErrorCode file_open (const char* wrfin, int* ncid) {
-    handle_error ( nc_open_par (
-        wrfin,
-        NC_MPIIO | NC_NETCDF4 | NC_WRITE,
-        PETSC_COMM_WORLD,
-        MPI_INFO_NULL,
-        ncid) );
-    return (0); }
+    if (access (wrfin, F_OK) != -1) {
+        ERR (
+            nc_open_par (
+                wrfin,
+                NC_MPIIO | NC_NETCDF4 | NC_WRITE,
+                PETSC_COMM_WORLD,
+                MPI_INFO_NULL,
+                ncid) );
+        return (0); }
+    else {
+        SETERRQ1 (
+            PETSC_COMM_SELF,
+            PETSC_ERR_FILE_OPEN,
+            "Input file '%s' not found.",
+            wrfin);} }
 
 
 PetscErrorCode file_close (int ncid) {
@@ -29,8 +38,8 @@ PetscErrorCode file_close (int ncid) {
 PetscErrorCode file_get_dimsize (
     const int ncid, const char* dimname, size_t* dimsize) {
     int dimid;
-    handle_error ( nc_inq_dimid (ncid, dimname, &dimid) );
-    handle_error ( nc_inq_dimlen (ncid, dimid, dimsize) );
+    ERR (nc_inq_dimid (ncid, dimname, &dimid) );
+    ERR (nc_inq_dimlen (ncid, dimid, dimsize) );
     return (0); }
 
 
@@ -46,8 +55,10 @@ PetscErrorCode file_enddef (const int ncid) {
 
 PetscErrorCode file_def_var (const int ncid, const char* name) {
     int dimids[4];
+
     for (int i = 0; i < NDIMS; i++)
         nc_inq_dimid (ncid, dimnames[i], &dimids[i]);
+
     nc_def_var (ncid, name, NC_FLOAT, NDIMS, dimids, 0);
     return (0); }
 
@@ -72,8 +83,8 @@ int file_read_3d (
 
     DM             da;
     PetscScalar*** a;
-    PetscInt zs, ys, xs, zm, ym, xm;
-    int id;
+    PetscInt       zs, ys, xs, zm, ym, xm;
+    int            id;
 
     VecGetDM (v, &da);
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
@@ -81,7 +92,8 @@ int file_read_3d (
     size_t count[4] = {1, zm, ym, xm };
     DMDAVecGetArray (da, v, &a);
     nc_inq_varid (ncid, varname, &id);
-    nc_get_vara_double (ncid, id, start, count, &a[start[1]][start[2]][start[3]]);
+    nc_get_vara_double (
+        ncid, id, start, count, &a[start[1]][start[2]][start[3]]);
     DMDAVecRestoreArray (da, v, &a);
     return (0); }
 
@@ -108,8 +120,7 @@ int read2D (
     count[1] = ym;
     count[2] = xm;
     nc_inq_varid (ncid, varname, &id);
-    nc_get_vara_double (
-        ncid, id, start, count, &a[start[1]][start[2]]);
+    nc_get_vara_double (ncid, id, start, count, &a[start[1]][start[2]]);
     DMDAVecRestoreArray (da, v, &a);
     return (0); }
 
@@ -121,7 +132,7 @@ int file_read_array_double (
     const size_t* count,
     double*       a_double) {
     int id;
-    handle_error (nc_inq_varid (ncid, varname, &id) );
+    ERR (nc_inq_varid (ncid, varname, &id) );
     nc_get_vara_double (ncid, id, start, count, a_double);
     return (0); }
 
@@ -150,19 +161,20 @@ int write3D (
     count[2] = ym;
     count[3] = xm;
     nc_inq_varid (ncid, varname, &id);
-    nc_var_par_access(ncid,id,NC_COLLECTIVE);
+    nc_var_par_access (ncid, id, NC_COLLECTIVE);
     nc_put_vara_double (
         ncid, id, start, count, &a[start[1]][start[2]][start[3]]);
     DMDAVecRestoreArray (da, v, &a);
     return (0); }
 
 
-int write3Ddump (const char* varname, size_t mx, size_t my, size_t mz, Vec v) {
-    int            varid, ncid, ndims = 4;
-    char           fname[256] = "";
-    char*          dnames[4]  = {"TIME", "ZDIM", "YDIM", "XDIM" };
-    size_t         ds[4] = {1, mz, my, mx};
-    int            dimids[4];
+int write3Ddump (
+    const char* varname, size_t mx, size_t my, size_t mz, Vec v) {
+    int    varid, ncid, ndims = 4;
+    char   fname[256] = "";
+    char*  dnames[4]  = {"TIME", "ZDIM", "YDIM", "XDIM" };
+    size_t ds[4]      = {1, mz, my, mx };
+    int    dimids[4];
 
     strcat (fname, varname);
     strcat (fname, ".nc");
@@ -172,18 +184,12 @@ int write3Ddump (const char* varname, size_t mx, size_t my, size_t mz, Vec v) {
         PETSC_COMM_WORLD,
         MPI_INFO_NULL,
         &ncid);
+
     for (int i = 0; i < ndims; i++)
         nc_def_dim (ncid, dnames[i], ds[i], &dimids[i]);
+
     nc_def_var (ncid, varname, NC_FLOAT, ndims, dimids, &varid);
     nc_enddef (ncid);
     write3D (ncid, (const unsigned long) 0, varname, v);
     nc_close (ncid);
     return (0); }
-
-void handle_error (int status) {
-    if (status != NC_NOERR) {
-        PetscPrintf(PETSC_COMM_WORLD,"Error in %s\n",nc_strerror(status));
-        PetscFinalize();
-        exit(0);
-    }
-}
