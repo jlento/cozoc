@@ -17,7 +17,7 @@ extern const char* fieldnames[NFIELDS];
 #define ERRCODE 2
 #define ERR(e)                                                         \
     if (e) {                                                           \
-        printf (                                                       \
+        fprintf (stderr,                                               \
             "%s[%d]: %s: Error: %s\n",                                 \
             __FILE__,                                                  \
             __LINE__,                                                  \
@@ -69,7 +69,5 @@ int write3D (
     Vec                 v);
 
 int write3Ddump (const char* varname, const size_t mx, const size_t my, const size_t mz, Vec v);
-
-void handle_error(int status);
 
 #endif
