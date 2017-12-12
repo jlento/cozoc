@@ -1,4 +1,5 @@
 include (ide_support)
+include (AlwaysRPATH)
 
 find_package (MPI REQUIRED)
 find_package (PETSC REQUIRED)
