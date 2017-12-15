@@ -1,5 +1,9 @@
 #!/bin/bash
 
+curdir=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+output_filename=${1:-$(basename -s .bash "$0").nc4}
+: ${ncgen:=${curdir}/../netcdf/bin/ncgen}
+
 nx=8
 ny=8
 nz=4
@@ -14,7 +18,7 @@ function csv_repeat () {
     echo "$2"
 }
 
-cat <<EOF
+cat <<EOF | ${ncgen} -k nc4 -o "$output_filename"
 netcdf wrf {
 dimensions:
 	west_east = ${nx} ;
