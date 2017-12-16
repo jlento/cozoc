@@ -7,15 +7,55 @@ output_filename=${1:-$(basename -s .bash "$0").nc4}
 nx=8
 ny=8
 nz=4
-nt=4
+nt=8
 dt=60
 
+# Loosely from the steady state vortex solution
+#   https://en.wikipedia.org/wiki/Navier%E2%80%93Stokes_equations
+
+field () {
+    bc -ql <<EOF
+scale = 2
+nt=$nt
+nz=$nz
+ny=$ny
+nx=$nx
+
+define pow (a,b) { return (e(b * l(a))); }
+define div (a,b) { auto s,r; s = scale; scale = 0; r = a / b; scale = s; return r; }
+define rem (a,b) { auto s,r; s = scale; scale = 0; r = a % b; scale = s; return r; }
+for (i = 0;i < nx; i++) periodic[i] = i - div(nx,2)
+
+for (t = 0; t < nt; t++)
+  for (z = - div(nz,2); z < nz - div(nz,2); z++)
+    for (y = - div(ny,2); y < ny - div(ny,2); y++)
+      for (i = 0; i < nx; i++) {
+        x = periodic[rem(i+div(nt,2)-t+nt*nx,nx)]
+        $1
+      }
+EOF
+}
+
+A=1
+B=1
+r=1
+
+rho=( $(field "3 * $B / ($r^2 + x^2 + y^2 + z^2)") )
+
+p=(   $(field "-$A^2 * $B / ($r^2 + x^2 + y^2 + z^2)^3") )
+
+u=(   $(field "2 * $A / ($r^2 + x^2 + y^2 + z^2)^2 * (-$r * y + x * z)") )
+
+v=(   $(field "2 * $A / ($r^2 + x^2 + y^2 + z^2)^2 * ($r * x + y * z)") )
+
+w=(   $(field "2 * $A / ($r^2 + x^2 + y^2 +z^2)^2 * ($r^2 - x^2 - y^2 - x^2)") )
+
+T=(   $(field "-$A^2 * $B / ($r^2 + x^2 + y^2 +z^2)^3 - y + 273") )
+
+IFS=,
+
 function csv_repeat () {
-    for ((i=1;i<$1;i++))
-    do
-        printf "$2,"
-    done
-    echo "$2"
+    for ((i=1;i<$1;i++)); do printf "$2,"; done; printf "$2"
 }
 
 cat <<EOF | ${ncgen} -k nc4 -o "$output_filename"
@@ -81,7 +121,7 @@ variables:
 	double XTIME(time) ;
 
 // global attributes:
-		:history = "Fri Sep  9 10:43:37 2016: ncrename -O -d x,DateStrLen test_wrf.nc\nFri Sep  9 10:27:52 2016: ncrename -O -d x_2,west_east test_wrf.nc\nFri Sep  9 10:27:26 2016: ncrename -O -d y,south_north test_wrf.nc\nFri Sep  9 10:26:53 2016: ncrename -O -d lev,vlevs test_wrf.nc\nFri Sep 09 10:22:24 2016: cdo seltimestep,117,118,119,120 wrfout_d01_0001-01-01_INTRP.nc test_wrf.nc" ;
+		:history = "Some almost arbitrary numbers for testing purposes" ;
 		:TITLE = " SIMULATED OUTPUT FROM WRF V3.8.1 MODEL - ON PRES LEVELS" ;
 		:START_DATE = "0001-01-01_00:00:00" ;
 		:SIMULATION_START_DATE = "0001-01-01_00:00:00" ;
@@ -97,22 +137,22 @@ variables:
 		:MAP_PROJ_CHAR = "Cartesian" ;
 data:
 	LEV = $(seq -s , 100000 -$((90000/(nz-1))) 10000);
-	UU = $(csv_repeat $((nt*nz*ny*nx)) 1);
-	VV = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	MU = $(csv_repeat $((nt*ny*nx)) 0);
+	UU = ${u[*]};
+	VV = ${v[*]};
+	MU = $(csv_repeat $((nt*ny*nx)) 1);
 	MUB = $(csv_repeat $((nt*ny*nx)) 0);
 	PSFC = $(csv_repeat $((nt*ny*nx)) 10000);
-	H_DIABATIC = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	F = $(csv_repeat $((nt*ny*nx)) 0);
-	RUCUTEN = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	RVCUTEN = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	RTHCUTEN = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	RTHRATEN = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	RUBLTEN = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	RVBLTEN = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	RTHBLTEN = $(csv_repeat $((nt*nz*ny*nx)) 0);
-	TT = $(csv_repeat $((nt*nz*ny*nx)) 293);
-	GHT = $(csv_repeat $((nt*nz*ny*nx)) 1);
+	H_DIABATIC = ${w[*]};
+	F = $(csv_repeat $((nt*ny*nx)) 1);
+	RUCUTEN = ${w[*]};
+	RVCUTEN = $(csv_repeat $((nt*nz*ny*nx)) 1);
+	RTHCUTEN = $(csv_repeat $((nt*nz*ny*nx)) 1);
+	RTHRATEN = $(csv_repeat $((nt*nz*ny*nx)) 1);
+	RUBLTEN = $(csv_repeat $((nt*nz*ny*nx)) 1);
+	RVBLTEN = $(csv_repeat $((nt*nz*ny*nx)) 1);
+	RTHBLTEN = $(csv_repeat $((nt*nz*ny*nx)) 1);
+	TT = ${T[*]};
+	GHT = ${p[*]};
 	XTIME = $(seq -s , 0 $dt $((dt*(nt-1))));
 }
 EOF
