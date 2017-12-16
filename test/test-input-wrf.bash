@@ -1,13 +1,38 @@
 #!/bin/bash
 
 curdir=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
-output_filename=${1:-$(basename -s .bash "$0").nc4}
 : ${ncgen:=${curdir}/../netcdf/bin/ncgen}
 
-nx=8
-ny=8
-nz=4
-nt=8
+# Defaults
+output=$(basename -s .bash "$0").nc4
+size=16
+
+usage="
+Usage: $0 [-s SIZE] [-o OUTPUT]
+
+Optional arguments:
+  SIZE   -- Each field will have SIZE^4/2 points (Default: $size)
+  OUTPUT -- Name of the output file (Default: $output)
+"
+
+# Command line options
+OPTS=$(getopt -o hs:o: --long help,output:,size: -n 'parse-options' -- "$@")
+if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; echo "$usage" >&2; exit 1 ; fi
+eval set -- "$OPTS"
+while true; do
+    case "$1" in
+        -h | --help ) echo "$usage"; exit 0;;
+        -o | --output ) output="$2"; shift; shift ;;
+        -s | --size ) size="$2"; shift; shift ;;
+        -- ) shift; break ;;
+        * ) break ;;
+  esac
+done
+
+nx=$size
+ny=$size
+((nz = size / 2))
+nt=$size
 dt=60
 
 # Loosely from the steady state vortex solution
@@ -38,7 +63,7 @@ EOF
 
 A=1
 B=1
-r=1
+(( r = size / 8 ))
 
 rho=( $(field "3 * $B / ($r^2 + x^2 + y^2 + z^2)") )
 
@@ -58,7 +83,7 @@ function csv_repeat () {
     for ((i=1;i<$1;i++)); do printf "$2,"; done; printf "$2"
 }
 
-cat <<EOF | ${ncgen} -k nc4 -o "$output_filename"
+cat <<EOF | ${ncgen} -k nc4 -o "$output"
 netcdf wrf {
 dimensions:
 	west_east = ${nx} ;
