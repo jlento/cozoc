@@ -30,3 +30,5 @@ add_executable (cozoc constants.c context.c
   cozoc.c daslice.c ops.c io.c omega.c omegaQG.c)
 
 target_link_libraries (cozoc m)
+
+install (TARGETS cozoc DESTINATION bin)

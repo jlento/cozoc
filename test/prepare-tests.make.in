@@ -1,0 +1,2 @@
+test-input-wrf-nc4: ${CMAKE_CURRENT_SOURCE_DIR}/test-input-wrf.bash
+	$< -s 8
