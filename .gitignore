@@ -1,5 +1,6 @@
 *~
 build/*
+.emacs.d
 .vagrant
 .dir-locals.el
 .clang_complete
