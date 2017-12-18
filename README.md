@@ -78,10 +78,12 @@ with the NetCDF4 library build from sources as described above,
 command in the build directory should configure COZOC automatically.
 
 If cmake cannot auto-detect the location of the PETSc or NetCDF4 libraries,
-you can set environment variables PETSC_DIR or NETCDF_DIR, to give cmake
+you can set environment variables `PETSC_DIR` or `NETCDF_DIR`, to give cmake
 a hint where to search for the libraries. For example,
 
-    NETCDF_DIR=$HOME/my-netcdf cmake ..
+    NETCDF_DIR=$HOME/my-netcdf cmake -DCMAKE_INSTALL_PREFIX=$PWD ..
+
+The CMake variable `CMAKE_INSTALL_PREFIX` sets the install root.
 
 ### In Cray XC40
 

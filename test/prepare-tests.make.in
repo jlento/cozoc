@@ -1,2 +1,12 @@
-test-input-wrf-nc4: ${CMAKE_CURRENT_SOURCE_DIR}/test-input-wrf.bash
-	$< -s 8
+SHELL=bash
+TEMPLATES = $(wildcard ${CMAKE_CURRENT_SOURCE_DIR}/*.template)
+INPUTS = $(notdir $(TEMPLATES:.template=.nc4))
+
+vpath %.template ${CMAKE_CURRENT_SOURCE_DIR}
+
+.PHONY: all
+
+all: $(INPUTS)
+
+%.nc4: %.template
+	$(SHELL) ${CMAKE_CURRENT_SOURCE_DIR}/generate-input.bash -s 8 -t $(basename $@)
