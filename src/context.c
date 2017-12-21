@@ -414,7 +414,7 @@ static int diabatic_heating (
     DMDAVecGetArray (da, Q, &qa);
 
     for (int k = zs; k < zs + zm; k++) {
-        PetscScalar alev = pow (p[k] / 10000.0, r / cp);
+        PetscScalar alev = pow (p[k] / 100000.0, r / cp);
 
         for (int j = ys; j < ys + ym; j++) {
             for (int i = xs; i < xs + xm; i++)
