@@ -236,17 +236,64 @@ static int horizontal_wind_and_vorticity (
     DM          da,
     DM          da2,
     size_t      my,
+    size_t      mz,
     PetscScalar hx,
     PetscScalar hy,
-    Vec         tmpvec,
+    PetscScalar*f,
+    PetscScalar*p,
+    Vec         sigmavec,
     Vec         V,
-    Vec         zeta) {
-    for (int i = 0; i < 2; i++) {
-        char* name[2] = {"UU", "VV" };
-        file_read_3d (ncid, step, name[i], tmpvec);
-        VecStrideScatter (tmpvec, i, V, INSERT_VALUES); }
+    Vec         zetarawvec) {
+    PetscInt       zs, ys, xs, zm, ym, xm, sum1,sum2;
+    PetscScalar*** sigma;
+    PetscScalar*** tmpU;
+    PetscScalar*** tmpV;
+    PetscScalar*** zetaraw;
+    PetscScalar    tmp;
+    Vec            tmpUvec;
+    Vec            tmpVvec;
 
-    horizontal_rotor (da, da2, my, hx, hy, V, zeta);
+    DMGetGlobalVector (da, &tmpUvec);
+    DMGetGlobalVector (da, &tmpVvec);
+    char* name[2] = {"UU", "VV" };
+    file_read_3d (ncid, step, name[0], tmpUvec);
+    VecStrideScatter (tmpUvec, 0, V, INSERT_VALUES);
+    file_read_3d (ncid, step, name[1], tmpVvec);
+    VecStrideScatter (tmpVvec, 1, V, INSERT_VALUES);
+
+    horizontal_rotor (da, da2, my, hx, hy, V, zetarawvec);
+
+    DMDAVecGetArray (da, sigmavec, &sigma);
+    DMDAVecGetArray (da, zetarawvec, &zetaraw);
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+    fpder (da, mz, NULL, p, tmpUvec);
+    fpder (da, mz, NULL, p, tmpVvec);
+
+    DMDAVecGetArray (da, tmpUvec, &tmpU);
+    DMDAVecGetArray (da, tmpVvec, &tmpV);
+
+    sum1 = 0;
+    sum2 = 0;
+    for (int k = zs; k < zs + zm; k++) {
+      for (int j = ys; j < ys + ym; j++) {
+        for (int i = xs; i < xs + xm; i++) {
+          tmp = etamin + f[j] /
+            (4 * sigma[k][j][i]) *
+            (pow (tmpU[k][j][i], 2.0) +
+            pow (tmpV[k][j][i], 2.0)) -
+            f[j];
+          if (zetaraw[k][j][i] > tmp) {
+            zetaraw[k][j][i] = zetaraw[k][j][i];
+            sum1 = sum1 + 1;}
+          else {
+            zetaraw[k][j][i] = tmp;
+            sum2 = sum2 + 1;}
+          } } }
+    PetscPrintf(PETSC_COMM_WORLD,"Ei täyttynyt: %d. Täyttyi: %d\n",sum1,sum2);
+    DMDAVecRestoreArray (da, tmpUvec, &tmpU);
+    DMDAVecRestoreArray (da, tmpVvec, &tmpV);
+    DMDAVecRestoreArray (da, zetarawvec, &zetaraw);
+    DMDAVecRestoreArray (da, sigmavec, &sigma);
     return (0); }
 
 
@@ -259,8 +306,12 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
     DM          da,
     DM          da2,
     size_t      my,
+    size_t      mz,
     PetscScalar hx,
     PetscScalar hy,
+    PetscScalar*f,
+    PetscScalar*p,
+    Vec         sigmavec,
     Vec*        V,
     Vec*        Vnext,
     Vec*        zeta,
@@ -273,16 +324,20 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
         if (step == 0) {
             tmpvec = *zetatend;
             horizontal_wind_and_vorticity (
-                ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
+             ncid, step, da, da2, my, mz, hx, hy,
+             f, p, sigmavec, *V, *zeta);
             horizontal_wind_and_vorticity (
                 ncid,
                 step + 1,
                 da,
                 da2,
                 my,
+                mz,
                 hx,
                 hy,
-                tmpvec,
+                f,
+                p,
+                sigmavec,
                 *Vnext,
                 *zetanext);
             VecCopy (*zeta, *zetatend);
@@ -292,16 +347,20 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
         else {
             tmpvec = *zetatend;
             horizontal_wind_and_vorticity (
-                ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
+            ncid, step, da, da2, my, mz, hx, hy,
+            f, p, sigmavec, *V, *zeta);
             horizontal_wind_and_vorticity (
                 ncid,
                 step + 1,
                 da,
                 da2,
                 my,
+                mz,
                 hx,
                 hy,
-                tmpvec,
+                f,
+                p,
+                sigmavec,
                 *Vnext,
                 *zetanext);
             horizontal_wind_and_vorticity (
@@ -310,9 +369,12 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
                 da,
                 da2,
                 my,
+                mz,
                 hx,
                 hy,
-                tmpvec,
+                f,
+                p,
+                sigmavec,
                 *V,
                 *zetatend);
             VecAXPY (*zetatend, -1.0, *zetanext);
@@ -340,9 +402,12 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
                 da,
                 da2,
                 my,
+                mz,
                 hx,
                 hy,
-                tmpvec,
+                f,
+                p,
+                sigmavec,
                 *Vnext,
                 *zetanext);
             VecAXPY (*zetatend, -1.0, *zetanext);
@@ -489,6 +554,7 @@ int context_update (const int ncid, const int step, Context* ctx) {
     int          skip     = ctx->skip;
     int          steps    = ctx->steps;
     PetscScalar* p        = ctx->Pressure;
+    PetscScalar* f        = ctx->Coriolis_parameter;
     Vec          psfc     = ctx->Surface_pressure;
     Vec          Z        = ctx->Geopotential_height;
     Vec*         T        = &ctx->Temperature;
@@ -522,8 +588,12 @@ int context_update (const int ncid, const int step, Context* ctx) {
         da,
         da2,
         my,
+        mz,
         hx,
         hy,
+        f,
+        p,
+        sigma,
         V,
         &Vnext,
         zeta,
