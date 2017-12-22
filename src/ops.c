@@ -15,24 +15,30 @@ int field_array1d_add (
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
     DMDAVecGetArray (da, x, &xa);
 
+
     switch (direction) {
     case DMDA_X:
         for (k = zs; k < zs + zm; k++) {
             for (j = ys; j < ys + ym; j++) {
                 for (i = xs; i < xs + xm; i++) {
                     xa[k][j][i] += arr[i]; } } }
+        break;
 
     case DMDA_Y:
         for (k = zs; k < zs + zm; k++) {
             for (j = ys; j < ys + ym; j++) {
                 for (i = xs; i < xs + xm; i++) {
                     xa[k][j][i] += arr[j]; } } }
+        break;
 
     case DMDA_Z:
         for (k = zs; k < zs + zm; k++) {
             for (j = ys; j < ys + ym; j++) {
                 for (i = xs; i < xs + xm; i++) {
-                    xa[k][j][i] += arr[k]; } } } }
+                    xa[k][j][i] += arr[k]; } } }
+        break;
+
+    }
 
     DMDAVecRestoreArray (da, x, &xa);
     return (0); }
@@ -228,7 +234,6 @@ int fpder (
 
     return (0); }
 
-
 int horizontal_average (Context* ctx, Vec v, PetscScalar v_ave[]) {
 
     DM             da;
@@ -328,4 +333,52 @@ int plaplace (Vec inout, Context* ctx) {
 
     DMRestoreLocalVector (da, &Vvec);
 
+    return (0); }
+
+int mul_fact (Context* ctx, Vec s) {
+
+    DM           da      = ctx->da;
+    DM           daxy    = ctx->daxy;
+    PetscScalar* p       = ctx->Pressure;
+    Vec          PSFCVec = ctx->Surface_pressure;
+
+    PetscInt       i, j, k, zs, ys, xs, zm, ym, xm;
+    PetscScalar ***sa, **psfc;
+
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+
+    DMDAVecGetArray (da, s, &sa);
+    DMDAVecGetArray (daxy, PSFCVec, &psfc);
+
+    for (k = 1; k < (int) ctx->mz - 1; k++) {
+        for (j = ys; j < ys + ym; j++) {
+            for (i = xs; i < xs + xm; i++) {
+                if (psfc[j][i] <= (p[k] + p[k + 1]) / 2) {
+                    sa[k][j][i] = 0.0; }
+                else if (psfc[j][i] <= (p[k] + p[k - 1]) / 2) {
+                    sa[k][j][i] = (p[k] + p[k + 1] - 2.0 * psfc[j][i]) /
+                                  (p[k + 1] - p[k - 1]); }
+                else {
+                    sa[k][j][i] = 1.0; } } } }
+
+    k = ctx->mz - 1;
+
+    for (j = ys; j < ys + ym; j++) {
+        for (i          = xs; i < xs + xm; i++)
+            sa[k][j][i] = 1.0; }
+
+    k = 0;
+
+    for (j = ys; j < ys + ym; j++) {
+        for (i = xs; i < xs + xm; i++) {
+            if (psfc[j][i] > (p[k] + p[k + 1]) / 2) {
+                sa[k][j][i] = (p[k] + p[k + 1] - 2.0 * psfc[j][i]) /
+                              (p[k + 1] - p[k]) / 2.0; }
+            else if (psfc[j][i] <= (p[k] + p[k + 1]) / 2) {
+                sa[k][j][i] = 0.0; }
+            else {
+                sa[k][j][i] = 1.0; } } }
+
+    DMDAVecRestoreArray (daxy, PSFCVec, &psfc);
+    DMDAVecRestoreArray (da, s, &sa);
     return (0); }

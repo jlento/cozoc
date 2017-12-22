@@ -29,4 +29,6 @@ int fpder (
 
 int plaplace (Vec inout, Context* ctx);
 
+int mul_fact (Context* ctx, Vec s);
+
 #endif /* OPS_H */
