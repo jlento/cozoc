@@ -1,6 +1,7 @@
 #include "constants.h"
 #include "context.h"
 #include "ops.h"
+#include "io.h"
 #include "petscdmda.h"
 
 
@@ -382,3 +383,155 @@ int mul_fact (Context* ctx, Vec s) {
     DMDAVecRestoreArray (daxy, PSFCVec, &psfc);
     DMDAVecRestoreArray (da, s, &sa);
     return (0); }
+
+int ellipticity_sigma_vorticity (
+    Context*     ctx,
+    size_t       mz,
+    PetscScalar* p,
+    PetscScalar* f,
+    Vec          sigmavec,
+    Vec          zetavec,
+    Vec          Vvec) {
+    DM           da  = ctx->da;
+    DM           da2  = ctx->da2;
+    PetscInt     zs, ys, xs, zm, ym, xm, sum1,sum2;
+    PetscScalar  tmp;
+    Vec          tmpUvec;
+    Vec          tmpVvec;
+    PetscScalar*** tmpU;
+    PetscScalar*** tmpV;
+    PetscScalar*** sigma;
+    PetscScalar*** zetaraw;
+    PetscScalar ****V;
+
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+    DMGetGlobalVector (da, &tmpUvec);
+    DMGetGlobalVector (da, &tmpVvec);
+    DMDAVecGetArrayDOFRead (da2, Vvec, &V);
+    DMDAVecGetArray (da, tmpUvec, &tmpU);
+    DMDAVecGetArray (da, tmpVvec, &tmpV);
+
+    for (int k = zs; k < zs + zm; k++) {
+        for (int j = ys; j < ys + ym; j++) {
+            for (int i = xs; i < xs + xm; i++) {
+                tmpU[k][j][i] = V[k][j][i][0];
+                tmpV[k][j][i] = V[k][j][i][1];
+            } } }
+    DMDAVecRestoreArray (da, tmpUvec, &tmpU);
+    DMDAVecRestoreArray (da, tmpVvec, &tmpV);
+
+    fpder (da, mz, NULL, p, tmpUvec);
+    fpder (da, mz, NULL, p, tmpVvec);
+
+    DMDAVecGetArray (da, tmpUvec, &tmpU);
+    DMDAVecGetArray (da, tmpVvec, &tmpV);
+    DMDAVecGetArray (da, sigmavec, &sigma);
+    DMDAVecGetArray (da, zetavec, &zetaraw);
+
+    sum1 = 0;
+    sum2 = 0;
+    for (int k = zs; k < zs + zm; k++) {
+        for (int j = ys; j < ys + ym; j++) {
+            for (int i = xs; i < xs + xm; i++) {
+                if (sigma[k][j][i] < sigmamin)
+                   sigma[k][j][i] = sigmamin;
+                tmp = etamin + f[j] /
+                    (4.0 * sigma[k][j][i]) * (
+                        tmpU[k][j][i]*tmpU[k][j][i] +
+                        tmpV[k][j][i]*tmpV[k][j][i]) -
+                    f[j];
+                if (zetaraw[k][j][i] > tmp) {
+                    zetaraw[k][j][i] = zetaraw[k][j][i];
+                    sum1 += 1;}
+                else {
+                    zetaraw[k][j][i] = tmp;
+                    sum2 += 1;}
+            } } }
+    PetscPrintf(PETSC_COMM_WORLD,"Ei täyttynyt: %d täyttyi: %d\n",sum1,sum2);
+
+    DMDAVecRestoreArray (da, tmpUvec, &tmpU);
+    DMDAVecRestoreArray (da, tmpVvec, &tmpV);
+    DMDAVecRestoreArray (da, sigmavec, &sigma);
+    DMDAVecRestoreArray (da, zetavec, &zetaraw);
+
+    return (0);}
+
+int xder (Vec bvec, Context* ctx) {
+
+    DM           da = ctx->da;
+    PetscScalar     wx = 0.5 / ctx->hx;
+    Vec          avec;
+    PetscScalar  ***a, ***b;
+    PetscInt        i, j, k, zs, ys, xs, zm, ym, xm;
+
+    DMGetLocalVector (da, &avec);
+    DMGlobalToLocalBegin (da, bvec, INSERT_VALUES, avec);
+    DMGlobalToLocalEnd (da, bvec, INSERT_VALUES, avec);
+
+    DMDAVecGetArrayRead (da, avec, &a);
+
+    DMDAVecGetArray (da, bvec, &b);
+
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+
+    for (k = zs; k < zs + zm; k++) {
+        for (j = ys; j < ys + ym; j++) {
+            for (i = xs; i < xs + xm; i++) {
+                b[k][j][i] =
+                    (a[k][j][i + 1] - a[k][j][i - 1]) *
+                    wx;  } } }
+
+    DMDAVecRestoreArrayRead (da, avec, &a);
+    DMDAVecRestoreArray (da, bvec, &b);
+
+    DMRestoreLocalVector (da, &avec);
+
+    return (0);}
+
+int yder (Vec bvec, Context* ctx) {
+
+    DM           da = ctx->da;
+    PetscScalar     wy = 0.5 / ctx->hy;
+    PetscInt        my = ctx->my;
+    Vec          avec;
+    PetscScalar  ***a, ***b;
+    PetscInt        i, j, k, zs, ys, xs, zm, ym, xm;
+
+    DMGetLocalVector (da, &avec);
+    DMGlobalToLocalBegin (da, bvec, INSERT_VALUES, avec);
+    DMGlobalToLocalEnd (da, bvec, INSERT_VALUES, avec);
+
+    DMDAVecGetArrayRead (da, avec, &a);
+
+    DMDAVecGetArray (da, bvec, &b);
+
+    DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+
+    for (k = zs; k < zs + zm; k++) {
+        for (j = ys; j < ys + ym; j++) {
+            int         j0, j1;
+            PetscScalar wyj;
+
+            if (j == 0) {
+                wyj = 2.0 * wy;
+                j1  = j + 1;
+                j0  = 0; }
+            else if (j == my - 1) {
+                wyj = 2.0 * wy;
+                j1  = j;
+                j0  = j - 1; }
+            else {
+                wyj = wy;
+                j1  = j + 1;
+                j0  = j - 1; }
+            for (i = xs; i < xs + xm; i++) {
+                b[k][j][i] =
+                    (a[k][j1][i] - a[k][j0][i]) *
+                    wyj;  } } }
+
+    DMDAVecRestoreArrayRead (da, avec, &a);
+    DMDAVecRestoreArray (da, bvec, &b);
+
+    DMRestoreLocalVector (da, &avec);
+
+    return (0);}
