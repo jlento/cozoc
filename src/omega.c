@@ -1,6 +1,7 @@
 #include "constants.h"
 #include "context.h"
 #include "omega.h"
+#include "io.h"
 #include "ops.h"
 #include <petscdmda.h>
 #include <petscksp.h>
@@ -34,6 +35,7 @@ extern PetscErrorCode omega_compute_operator (
     PetscScalar          hy  = ctx->hy;
     PetscScalar          hz  = ctx->hz;
     PetscScalar*         f   = ctx->Coriolis_parameter;
+    PetscScalar*         p   = ctx->Pressure;
     Vec                  sigmavec, zetavec, Vvec;
     const PetscScalar ***sigma, ***zeta, ****V;
     PetscInt             my = ctx->my;
@@ -56,6 +58,8 @@ extern PetscErrorCode omega_compute_operator (
     DMGlobalToLocalBegin (
         da2, ctx->Horizontal_wind, INSERT_VALUES, Vvec);
     DMGlobalToLocalEnd (da2, ctx->Horizontal_wind, INSERT_VALUES, Vvec);
+
+    ellipticity_sigma_vorticity(ctx,mz, p, f, sigmavec, zetavec, Vvec);
 
     DMDAVecGetArrayRead (da, sigmavec, &sigma);
     DMDAVecGetArrayRead (da, zetavec, &zeta);
@@ -129,12 +133,23 @@ extern PetscErrorCode omega_compute_rhs_F_V (
     PetscScalar  hx   = ctx->hx;
     PetscScalar  hy   = ctx->hy;
     PetscScalar  hz   = ctx->hz;
+    Vec          s;
+
+    DMGetGlobalVector (da, &s);
 
     VecCopy (zeta, b);
+
     field_array1d_add (b, f, DMDA_Y);
+
+
     horizontal_advection (b, V, ctx);
-    /* TODO: surface factor */
+
+    mul_fact(ctx, s);
+
+    VecPointwiseMult(b, s, b);
     fpder (da, mz, f, p, b);
+
+
     VecScale (b, hx * hy * hz);
     /*        write3Ddump(ctx,"b",b); */
 
@@ -152,15 +167,22 @@ extern PetscErrorCode omega_compute_rhs_F_T (
     KSP ksp, Vec b, void* ctx_p) {
 
     Context*    ctx = (Context*) ctx_p;
+    DM           da   = ctx->da;
     Vec         T   = ctx->Temperature;
     Vec         V   = ctx->Horizontal_wind;
     PetscScalar hx  = ctx->hx;
     PetscScalar hy  = ctx->hy;
     PetscScalar hz  = ctx->hz;
+    Vec          s;
 
+    DMGetGlobalVector (da, &s);
     VecCopy (T, b);
     horizontal_advection (b, V, ctx);
+    mul_fact(ctx, s);
+    VecPointwiseMult(b, s, b);
     plaplace (b, ctx);
+    write3Ddump ("F",40,80,19,b);
+
     VecScale (b, hx * hy * hz);
 
     return (0); }
@@ -189,9 +211,14 @@ extern PetscErrorCode omega_compute_rhs_F_F (
     PetscScalar  hx  = ctx->hx;
     PetscScalar  hy  = ctx->hy;
     PetscScalar  hz  = ctx->hz;
+    Vec          s;
 
+    DMGetGlobalVector (da, &s);
     horizontal_rotor (da, da2, my, hx, hy, F, b);
+    mul_fact(ctx, s);
+    VecPointwiseMult(b, s, b);
     fpder (da, mz, f, p, b);
+
     VecScale (b, -hx * hy * hz);
 
     return (0); }
@@ -209,12 +236,17 @@ extern PetscErrorCode omega_compute_rhs_F_Q (
     KSP ksp, Vec b, void* ctx_p) {
 
     Context*    ctx = (Context*) ctx_p;
+    DM          da  = ctx->da;
     Vec         Q   = ctx->Diabatic_heating;
     PetscScalar hx  = ctx->hx;
     PetscScalar hy  = ctx->hy;
     PetscScalar hz  = ctx->hz;
+    Vec         s;
 
+    DMGetGlobalVector(da, &s);
     VecCopy (Q, b);
+    mul_fact(ctx, s);
+    VecPointwiseMult(b, s, b);
     plaplace (b, ctx);
     VecScale (b, -hx * hy * hz);
 
@@ -245,14 +277,26 @@ extern PetscErrorCode omega_compute_rhs_F_A (
     PetscScalar  hy      = ctx->hy;
     PetscScalar  hz      = ctx->hz;
     Vec          tmpvec;
+    Vec          s;
+
+    DMGetGlobalVector (da, &s);
+    mul_fact (ctx, s);
+
 
     DMGetGlobalVector (da, &tmpvec);
     VecCopy (dTdt, b);
+
+    VecPointwiseMult (b, s, b);
+
     plaplace (b, ctx);
     VecCopy (dzetadt, tmpvec);
 
+    VecPointwiseMult (tmpvec, s, tmpvec);
+
     fpder (da, mz, f, p, tmpvec);
     VecAXPY (b, 1.0, tmpvec);
+
+
     DMRestoreGlobalVector (da, &tmpvec);
     VecScale (b, hx * hy * hz);
 

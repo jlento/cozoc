@@ -204,11 +204,6 @@ static int sigma_parameter (
     PetscScalar*** T;
     PetscScalar*** sigma;
 
-    /* first sigma holds auxiliary variable dT/dp, temporarily */
-    VecCopy (Tvec, sigmavec);
-    fpder (da, mz, NULL, p, sigmavec);
-
-    /* Calculating sigma --- sigma on rhs is "dT/dp" */
     DMDAVecGetArrayRead (da, Tvec, &T);
     DMDAVecGetArray (da, sigmavec, &sigma);
 
@@ -217,12 +212,18 @@ static int sigma_parameter (
     for (int k = zs; k < zs + zm; k++) {
         for (int j = ys; j < ys + ym; j++) {
             for (int i = xs; i < xs + xm; i++) {
-                sigma[k][j][i] =
-                    R / p[k] *
-                    (R / c_p * T[k][j][i] / p[k] - sigma[k][j][i]);
+              sigma[k][j][i] = log (T[k][j][i])-(R/c_p)*log(p[k]/100000.0);
+            } } }
 
-                if (sigma[k][j][i] < sigmamin)
-                    sigma[k][j][i] = sigmamin; } } }
+    DMDAVecRestoreArray (da, sigmavec, &sigma);
+    fpder (da, mz, NULL, p, sigmavec);
+    DMDAVecGetArray (da, sigmavec, &sigma);
+
+    for (int k = zs; k < zs + zm; k++) {
+      for (int j = ys; j < ys + ym; j++) {
+        for (int i = xs; i < xs + xm; i++) {
+          sigma[k][j][i] *= -R*T[k][j][i]/p[k];
+        } } }
 
     DMDAVecRestoreArrayRead (da, Tvec, &T);
     DMDAVecRestoreArray (da, sigmavec, &sigma);
@@ -241,12 +242,14 @@ static int horizontal_wind_and_vorticity (
     Vec         tmpvec,
     Vec         V,
     Vec         zeta) {
+
     for (int i = 0; i < 2; i++) {
         char* name[2] = {"UU", "VV" };
         file_read_3d (ncid, step, name[i], tmpvec);
         VecStrideScatter (tmpvec, i, V, INSERT_VALUES); }
 
     horizontal_rotor (da, da2, my, hx, hy, V, zeta);
+
     return (0); }
 
 
@@ -263,17 +266,21 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
     PetscScalar hy,
     Vec*        V,
     Vec*        Vnext,
+    Vec*        Vprev,
     Vec*        zeta,
     Vec*        zetatend,
     Vec*        zetanext) {
 
-    Vec tmpvec;
+    Vec         tmpvec;
+
+// Initialize temporary vector
+    tmpvec = *zetatend;
 
     if (step == skip) {
         if (step == 0) {
-            tmpvec = *zetatend;
+//            tmpvec = *zetatend;
             horizontal_wind_and_vorticity (
-                ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
+             ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
             horizontal_wind_and_vorticity (
                 ncid,
                 step + 1,
@@ -292,7 +299,7 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
         else {
             tmpvec = *zetatend;
             horizontal_wind_and_vorticity (
-                ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
+            ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
             horizontal_wind_and_vorticity (
                 ncid,
                 step + 1,
@@ -313,7 +320,7 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
                 hx,
                 hy,
                 tmpvec,
-                *V,
+                *Vprev,
                 *zetatend);
             VecAXPY (*zetatend, -1.0, *zetanext);
             VecScale (
@@ -327,13 +334,13 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
             VecScale (
                 *zetatend, -1.0 / (double) (t[step] - t[step - 1]) ); }
         else {
-            tmpvec    = *V;
+            *Vprev    = *V;
             *V        = *Vnext;
-            *Vnext    = tmpvec;
-            tmpvec    = *zetatend;
+//            *Vnext    = tmpvec;
+//            tmpvec    = *zetatend;
             *zetatend = *zeta;
             *zeta     = *zetanext;
-            *zetanext = tmpvec;
+//            *zetanext = tmpvec;
             horizontal_wind_and_vorticity (
                 ncid,
                 step + 1,
@@ -348,6 +355,8 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
             VecAXPY (*zetatend, -1.0, *zetanext);
             VecScale (
                 *zetatend, -1.0 / (double) (t[step + 1] - t[step - 1]) ); } }
+
+
 
     return (0); }
 
@@ -500,12 +509,14 @@ int context_update (const int ncid, const int step, Context* ctx) {
 
     static Vec Tnext    = NULL;
     static Vec Vnext    = NULL;
+    static Vec Vprev    = NULL;
     static Vec zetanext = NULL;
     static Vec mu_inv   = NULL;
 
     if (step == skip) {    // The first step
         VecDuplicate (*T, &Tnext);
         VecDuplicate (*V, &Vnext);
+        VecDuplicate (*V, &Vprev);
         VecDuplicate (*zeta, &zetanext);
         DMGetGlobalVector (daxy, &mu_inv); }
 
@@ -526,6 +537,7 @@ int context_update (const int ncid, const int step, Context* ctx) {
         hy,
         V,
         &Vnext,
+        &Vprev,
         zeta,
         zetatend,
         &zetanext);

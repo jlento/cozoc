@@ -89,11 +89,9 @@ D = def_fd([x, y, z], {x: i, y: j, z: k}, {x: hx, y: hy, z: hz}, [-1, 0, 1])
 L1 = (D(sigma[k, j, i] * omega[k, j, i], x, x) +
       D(sigma[k, j, i] * omega[k, j, i], y, y))
 
-L2 = (f[j] * D(zeta[k, j, i], z) * D(omega[k, j, i], z) +
-      f[j] * (zeta[k, j, i] + f[j]) * D(omega[k, j, i], z, z))
+L2 = f[j] * (zeta[k, j, i] + f[j]) * D(omega[k, j, i], z, z)
 
-L3 = (- f[j] * D(zeta[k, j, i], z, z) * omega[k, j, i]
-      - f[j] * D(zeta[k, j, i], z) * D(omega[k, j, i], z))
+L3 = - f[j] * D(zeta[k, j, i], z, z) * omega[k, j, i]
 
 L4 = (f[j] * D(V[k, j, i, 0], z, z) * D(omega[k, j, i], y)
       - f[j] * D(V[k, j, i, 1], z, z) * D(omega[k, j, i], x)
