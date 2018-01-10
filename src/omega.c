@@ -35,6 +35,7 @@ extern PetscErrorCode omega_compute_operator (
     PetscScalar          hy  = ctx->hy;
     PetscScalar          hz  = ctx->hz;
     PetscScalar*         f   = ctx->Coriolis_parameter;
+    PetscScalar*         p   = ctx->Pressure;
     Vec                  sigmavec, zetavec, Vvec;
     const PetscScalar ***sigma, ***zeta, ****V;
     PetscInt             my = ctx->my;
@@ -57,6 +58,8 @@ extern PetscErrorCode omega_compute_operator (
     DMGlobalToLocalBegin (
         da2, ctx->Horizontal_wind, INSERT_VALUES, Vvec);
     DMGlobalToLocalEnd (da2, ctx->Horizontal_wind, INSERT_VALUES, Vvec);
+
+    ellipticity_sigma_vorticity(ctx,mz, p, f, sigmavec, zetavec, Vvec);
 
     DMDAVecGetArrayRead (da, sigmavec, &sigma);
     DMDAVecGetArrayRead (da, zetavec, &zeta);
@@ -178,6 +181,7 @@ extern PetscErrorCode omega_compute_rhs_F_T (
     mul_fact(ctx, s);
     VecPointwiseMult(b, s, b);
     plaplace (b, ctx);
+    write3Ddump ("F",40,80,19,b);
 
     VecScale (b, hx * hy * hz);
 
