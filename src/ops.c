@@ -1,7 +1,7 @@
 #include "constants.h"
 #include "context.h"
 #include "ops.h"
-#include "io.h"
+//#include "io.h"
 #include "petscdmda.h"
 
 
@@ -335,7 +335,7 @@ int plaplace (Vec inout, Context* ctx) {
     DMRestoreLocalVector (da, &Vvec);
 
     return (0); }
-
+/*
 int mul_fact (Context* ctx, Vec s) {
 
     DM           da      = ctx->da;
@@ -535,3 +535,4 @@ int yder (Vec bvec, Context* ctx) {
     DMRestoreLocalVector (da, &avec);
 
     return (0);}
+*/

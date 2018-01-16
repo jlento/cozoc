@@ -307,6 +307,8 @@ you should place your code here."
 
   (put 'helm-make-build-dir 'safe-local-variable 'stringp)
 
+  (global-set-key [C-M-tab] 'clang-format-region)
+  
   (c-add-style "mystyle"
                '((c-basic-offset . 4)
                  (arglist-intro . +)
@@ -324,7 +326,7 @@ you should place your code here."
      (current-buffer) t
      (get-buffer-create "*AStyle-errors*") t))
   (global-set-key (kbd "C-c f") 'astyle-buffer)
-
+  (global-company-mode)
   )
 
 ;; Do not write anything past this comment. This is where Emacs will

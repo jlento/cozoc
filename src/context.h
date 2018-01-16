@@ -2,12 +2,8 @@
 #define CONTEXT_H
 
 #include "omega.h"
+#include "options.h"
 #include <petscksp.h>
-
-enum {
-    OMEGA_QUASI_GEOSTROPHIC = (1 << 0),
-    OMEGA_GENERALIZED       = (1 << 1),
-    HEIGHT_TENDENCY         = (1 << 2) } Targets;
 
 typedef struct {
     int ncid;
@@ -37,7 +33,7 @@ typedef struct {
 
 
 int context_create (
-    const int ncid, int* skip, int* steps, int* flags, Context* ctx);
+    const int ncid, Options*, Context*);
 
 int context_destroy (Context* ctx);
 
