@@ -1,6 +1,6 @@
 ---
 BasedOnStyle: LLVM
-AlignAfterOpenBracket: DontAlign
+AlignAfterOpenBracket: AlwaysBreak
 #AlignConsecutiveAssignments: true
 #AlignConsecutiveDeclarations: true
 #AlignTrailingComments: true

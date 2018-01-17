@@ -12,13 +12,11 @@ static char help[] =
     "  -s <n>      Skip <n> timesteps. Default: start from the first\n"
     "  -n <n>      Process <n> timesteps, only. Default: to the last timestep\n"
     "Mode:\n"
-    "  -Q          Solve quasi-geostrophic omega equation, only\n"
-    "  -G          Solve generalized omega equations, only\n\n";
+    "  -Q          Disable quasi-geostrophic omega eq calculation\n"
+    "  -G          Disable generalized omega eqs calculations\n\n";
 
 /* TODO:
-   "  -Z          Solve height tendency equations (default), and\n"
-   "              generalized omega equations if they are not already\n"
-   "              in the input file\n\n";
+   "  -Z          Disable height tendency eqs calculations\n\n";
 */
 
 #include "context.h"
@@ -48,11 +46,6 @@ static PetscErrorCode output_setup (const int ncid, const Options options) {
 }
 
 int main (int argc, char *argv[]) {
-    Options options = {.fname = "wrf.nc4",
-        .skip = 0,
-        .steps = PETSC_MAX_INT,
-        .compute_omega_quasi_geostrophic = PETSC_FALSE,
-        .compute_omega_generalized = PETSC_FALSE};
     int ncid;
     KSP ksp;
     Vec x;
@@ -60,7 +53,7 @@ int main (int argc, char *argv[]) {
 
     PetscInitialize (&argc, &argv, 0, help);
 
-    read_options (&options);
+    Options options = read_options ();
 
     //init_context (options, &ctx);
     file_open (options.fname, &ncid);
