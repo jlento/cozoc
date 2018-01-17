@@ -2,7 +2,7 @@
 #include "abortonerror.h"
 #include <petscoptions.h>
 
-Options read_options () {
+Options new_options () {
 
     Options options = {.fname = "wrf.nc4",
                        .skip = 0,

@@ -52,7 +52,7 @@ values."
      ;;        shell-default-height 30
      ;;        shell-default-position 'bottom)
      spell-checking
-     syntax-checking
+     (syntax-checking :variables flycheck-clang-language-standard c11)
      ;; version-control
      )
    ;; List of additional packages that will be installed without being
@@ -307,8 +307,8 @@ you should place your code here."
 
   (put 'helm-make-build-dir 'safe-local-variable 'stringp)
 
-  (global-set-key [C-M-tab] 'clang-format-region)
-  
+  (global-set-key [C-M-return] 'clang-format-buffer)
+
   (c-add-style "mystyle"
                '((c-basic-offset . 4)
                  (arglist-intro . +)

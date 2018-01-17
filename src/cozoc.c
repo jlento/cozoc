@@ -46,21 +46,19 @@ static PetscErrorCode output_setup (const int ncid, const Options options) {
 }
 
 int main (int argc, char *argv[]) {
-    int ncid;
     KSP ksp;
     Vec x;
     Context ctx;
 
     PetscInitialize (&argc, &argv, 0, help);
 
-    Options options = read_options ();
+    Options options = new_options ();
 
-    //init_context (options, &ctx);
-    file_open (options.fname, &ncid);
-    context_create (ncid, &options, &ctx);
-    output_setup (ncid, options);
+    NCFile ncfile = new_file (options);
 
-
+    // init_context (options, &ctx);
+    context_create (ncfile.id, &options, &ctx);
+    output_setup (ncfile.id, options);
 
     KSPCreate (PETSC_COMM_WORLD, &ksp);
     KSPSetDM (ksp, ctx.da);
@@ -71,17 +69,17 @@ int main (int argc, char *argv[]) {
     for (int t = skip; t < skip + steps; t++) {
         PetscPrintf (PETSC_COMM_WORLD, "Time step: %d\n", t);
 
-        context_update (ncid, t, &ctx);
+        context_update (ncfile.id, t, &ctx);
 
         if (options.compute_omega_quasi_geostrophic) {
             KSPSetComputeOperators (ksp, omega_qg_compute_operator, &ctx);
             KSPSetComputeRHS (ksp, omega_qg_compute_rhs, &ctx);
             KSPSolve (ksp, 0, 0);
             KSPGetSolution (ksp, &x);
-            write3D (ncid, t, OMEGA_QG_ID_STRING, x);
+            write3D (ncfile.id, t, OMEGA_QG_ID_STRING, x);
         }
 
-        // write3D (ncid, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
+        // write3D (ncfile.id, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
 
         if (options.compute_omega_generalized) {
             KSPSetComputeOperators (ksp, omega_compute_operator, &ctx);
@@ -90,14 +88,14 @@ int main (int argc, char *argv[]) {
                 KSPSetComputeRHS (ksp, omega_compute_rhs[i], &ctx);
                 KSPSolve (ksp, 0, 0);
                 KSPGetSolution (ksp, &x);
-                write3D (ncid, t, omega_component_id_string[i], x);
+                write3D (ncfile.id, t, omega_component_id_string[i], x);
             }
         }
     }
 
     KSPDestroy (&ksp);
     context_destroy (&ctx);
-    file_close (ncid);
+    file_close (ncfile.id);
     PetscFinalize ();
     return 0;
 }
