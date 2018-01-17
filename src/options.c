@@ -1,5 +1,6 @@
-#include "options.h"
 #include <petscoptions.h>
+#include "options.h"
+#include "abortonerror.h"
 
 PetscErrorCode read_options (Options *options) {
     PetscOptionsBegin (PETSC_COMM_WORLD, "", "Options for COZOC", "none");

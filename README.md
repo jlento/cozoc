@@ -140,6 +140,10 @@ processed by COZOC,
 
 In Ubuntu 16.04 LTS:
 
+    # If running on machine without Infiniband network
+    mkdir ~/.openmpi
+    echo "btl_base_exclude = openib" >> ~/.openmpi/mca-params.config
+    
     mpiexec -n 3 -mca btl ^openib ./src/cozoc -Q -G
 
 In Cray XC40:

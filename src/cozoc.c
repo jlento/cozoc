@@ -59,14 +59,11 @@ int main (int argc, char *argv[]) {
     Context ctx;
 
     PetscInitialize (&argc, &argv, 0, help);
-    PetscPushErrorHandler (PetscMPIAbortErrorHandler, 0);
 
     read_options (&options);
+
     //init_context (options, &ctx);
-
-
     file_open (options.fname, &ncid);
-
     context_create (ncid, &options, &ctx);
     output_setup (ncid, options);
 
