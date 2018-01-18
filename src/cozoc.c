@@ -7,13 +7,12 @@ static char help[] =
     "               [-s <n>] [-n <n>]\n"
     "\n"
     "Input file:\n"
-    "  -f <fname>  Input file, NetCDF4/HDF5 format, from WRF simulation\n"
+    "  -f <fname>    Input file, NetCDF4/HDF5 format, from WRF simulation\n"
     "Which time steps to process:\n"
-    "  -s <n>      Skip <n> timesteps. Default: start from the first\n"
-    "  -n <n>      Process <n> timesteps, only. Default: to the last timestep\n"
+    "  -r <s1>,<s2>  Range of steps to compute, counting from zero\n"
     "Mode:\n"
-    "  -Q          Disable quasi-geostrophic omega eq calculation\n"
-    "  -G          Disable generalized omega eqs calculations\n\n";
+    "  -Q            Disable quasi-geostrophic omega eq calculation\n"
+    "  -G            Disable generalized omega eqs calculations\n\n";
 
 /* TODO:
    "  -Z          Disable height tendency eqs calculations\n\n";
@@ -53,20 +52,25 @@ int main (int argc, char *argv[]) {
     PetscInitialize (&argc, &argv, 0, help);
 
     Options options = new_options ();
-
     NCFile ncfile = new_file (options);
 
-    // init_context (options, &ctx);
-    context_create (ncfile.id, &options, &ctx);
+    size_t start = (options.first > 0) ? options.first : 0;
+    size_t stop = (options.last + 1 < ncfile.dim[TIME]) ? (options.last + 1)
+                                                        : ncfile.dim[TIME];
+    PetscPrintf (
+        PETSC_COMM_WORLD, "Computing %zu steps, %zu-%zu(%zu)\n",
+        stop - start, start, stop - 1, ncfile.dim[TIME] - 1);
+
+    // Context context = new_context (options, ncfile);
+    PetscPrintf(PETSC_COMM_WORLD, "OK 1\n");
+    context_create (ncfile.id, start, stop, &ctx);
     output_setup (ncfile.id, options);
 
     KSPCreate (PETSC_COMM_WORLD, &ksp);
     KSPSetDM (ksp, ctx.da);
     KSPSetFromOptions (ksp);
 
-    PetscInt skip = options.skip;
-    PetscInt steps = options.steps;
-    for (int t = skip; t < skip + steps; t++) {
+    for (size_t t = start; t < stop; t++) {
         PetscPrintf (PETSC_COMM_WORLD, "Time step: %d\n", t);
 
         context_update (ncfile.id, t, &ctx);

@@ -33,7 +33,7 @@ typedef struct {
 
 
 int context_create (
-    const int ncid, Options*, Context*);
+    const int ncid, PetscInt, PetscInt, Context*);
 
 int context_destroy (Context* ctx);
 

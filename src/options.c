@@ -2,13 +2,16 @@
 #include "abortonerror.h"
 #include <petscoptions.h>
 
+#define MAXLEN 256
+
 Options new_options () {
 
     Options options = {.fname = "wrf.nc4",
-                       .skip = 0,
-                       .steps = PETSC_MAX_INT,
+                       .first = 0,
+                       .last = PETSC_MAX_INT,
                        .compute_omega_quasi_geostrophic = PETSC_TRUE,
                        .compute_omega_generalized = PETSC_TRUE};
+    char s[MAXLEN] = "";
 
     PetscOptionsBegin (PETSC_COMM_WORLD, "", "Options for COZOC", "none");
 
@@ -18,12 +21,11 @@ Options new_options () {
             options.fname, options.fname, PETSC_MAX_PATH_LEN, 0));
 
     CHKERRQ (
-        PetscOptionsInt (
-            "-s", "Skip <n> timesteps", 0, options.skip, &options.skip, 0));
-    CHKERRQ (
-        PetscOptionsInt (
-            "-n", "Calculate <n> timesteps", 0, options.steps, &options.steps,
-            0));
+        PetscOptionsString (
+            "-r",
+            "Range of steps to compute, counting form zero, -r <start>,<stop>",
+            0, s, s, MAXLEN, 0));
+    sscanf (s, "%u,%u", &options.first, &options.last);
 
     CHKERRQ (
         PetscOptionsBool (

@@ -8,9 +8,15 @@
 #include <petscdmda.h>
 #include <petscksp.h>
 
-int context_create (const int ncid, Options *options, Context *ctx) {
-    PetscInt* skip = &options->skip;
-    PetscInt* steps = &options->steps;
+int context_create (const int ncid, PetscInt first, PetscInt last, Context *ctx) {
+    PetscPrintf(PETSC_COMM_WORLD, "OK 2\n");
+    PetscInt skip_v = first;
+    PetscInt steps_v = last -first;
+    PetscInt* skip = &skip_v;
+    PetscInt* steps = &steps_v;
+    PetscPrintf (
+        PETSC_COMM_WORLD, "Skip %d, steps %d\n", *skip, *steps);
+    PetscPrintf(PETSC_COMM_WORLD, "OK 3\n");
 
     /* Open Input/output file and read the dimensions */
 
