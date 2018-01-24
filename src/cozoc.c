@@ -28,23 +28,6 @@ static char help[] =
 #include <petscdmda.h>
 #include <petscksp.h>
 
-static PetscErrorCode output_setup (const int ncid, const Options options) {
-
-    file_redef (ncid);
-
-    if (options.compute_omega_quasi_geostrophic)
-        file_def_var (ncid, OMEGA_QG_ID_STRING);
-
-    if (options.compute_omega_generalized) {
-        for (int i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++)
-            file_def_var (ncid, omega_component_id_string[i]);
-    }
-
-    file_enddef (ncid);
-
-    return (0);
-}
-
 int main (int argc, char *argv[]) {
     KSP     ksp;
     Vec     x;
@@ -65,7 +48,6 @@ int main (int argc, char *argv[]) {
         start, stop - 1, nctx.dim[TIME] - 1);
 
     context_create (ncfile.id, start, stop, &ctx);
-    output_setup (ncfile.id, options);
 
     KSPCreate (PETSC_COMM_WORLD, &ksp);
     KSPSetDM (ksp, ctx.da);
@@ -83,7 +65,6 @@ int main (int argc, char *argv[]) {
             KSPGetSolution (ksp, &x);
             write3D (ncfile.id, t, eqs.id_string[i], x);
         }
-
     }
 
     KSPDestroy (&ksp);

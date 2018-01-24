@@ -1,4 +1,6 @@
 #include "io.h"
+#include "omega.h"
+#include "omegaQG.h"
 #include <netcdf.h>
 #include <netcdf_par.h>
 #include <petscdmda.h>
@@ -33,26 +35,34 @@ static GRIDTYPE get_grid_type (Options const options, int const ncid) {
 NCFile new_file (Options options) {
     NCFile ncfile;
     strcpy (ncfile.name, options.fname);
-    ncfile.id = io_nc_open_par (options.fname);
+    ncfile.id        = io_nc_open_par (options.fname);
     ncfile.file_type = get_nc_file_type (options, ncfile.id);
     if (ncfile.file_type == NCFILETYPE_WRF) {
-        const char dimname[NUM_DIM][NC_MAX_NAME] = { DIMNAME_WRF };
+        const char dimname[NUM_DIM][NC_MAX_NAME] = {DIMNAME_WRF};
         for (size_t i = 0; i < NUM_DIM; ++i) {
             strcpy (ncfile.dimname[i], dimname[i]);
         }
     } else {
         SETERRABORT (PETSC_COMM_SELF, 1, "Could not determine input file type");
     };
-    ncfile.grid_type = get_grid_type(options, ncfile.id);
+    ncfile.grid_type = get_grid_type (options, ncfile.id);
+
+    // Output fields
+
+    file_redef (ncfile.id);
+
+    if (options.compute_omega_quasi_geostrophic)
+        file_def_var (ncfile.id, OMEGA_QG_ID_STRING);
+
+    if (options.compute_omega_generalized) {
+        for (int i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++)
+            file_def_var (ncfile.id, omega_component_id_string[i]);
+    }
+
+    file_enddef (ncfile.id);
+
     return ncfile;
 }
-
-
-
-
-
-
-
 
 const char *dimnames[NDIMS] = {"time", "vlevs", "south_north", "west_east"};
 
@@ -120,10 +130,10 @@ file_read_int_attribute (const int ncid, const char *name, PetscInt *attr) {
 int file_read_3d (
     const int ncid, const unsigned long time, const char *varname, Vec v) {
 
-    DM da;
+    DM             da;
     PetscScalar ***a;
-    PetscInt zs, ys, xs, zm, ym, xm;
-    int id;
+    PetscInt       zs, ys, xs, zm, ym, xm;
+    int            id;
 
     VecGetDM (v, &da);
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
@@ -140,11 +150,11 @@ int file_read_3d (
 int read2D (
     const int ncid, const unsigned long time, const char *varname, Vec v) {
 
-    DM da;
-    PetscInt ys, xs, ym, xm;
+    DM            da;
+    PetscInt      ys, xs, ym, xm;
     PetscScalar **a;
-    size_t start[3], count[3];
-    int id;
+    size_t        start[3], count[3];
+    int           id;
 
     VecGetDM (v, &da);
     DMDAGetCorners (da, &xs, &ys, 0, &xm, &ym, 0);
@@ -173,11 +183,11 @@ int file_read_array_double (
 int write3D (
     const int ncid, const unsigned long time, const char *varname, Vec v) {
 
-    DM da;
-    int id;
-    PetscInt zs, ys, xs, zm, ym, xm;
+    DM             da;
+    int            id;
+    PetscInt       zs, ys, xs, zm, ym, xm;
     PetscScalar ***a;
-    size_t start[4], count[4];
+    size_t         start[4], count[4];
 
     VecGetDM (v, &da);
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
@@ -199,11 +209,11 @@ int write3D (
 }
 
 int write3Ddump (const char *varname, size_t mx, size_t my, size_t mz, Vec v) {
-    int varid, ncid, ndims = 4;
-    char fname[256] = "";
-    char *dnames[4] = {"TIME", "ZDIM", "YDIM", "XDIM"};
-    size_t ds[4] = {1, mz, my, mx};
-    int dimids[4];
+    int    varid, ncid, ndims = 4;
+    char   fname[256] = "";
+    char * dnames[4]  = {"TIME", "ZDIM", "YDIM", "XDIM"};
+    size_t ds[4]      = {1, mz, my, mx};
+    int    dimids[4];
 
     strcat (fname, varname);
     strcat (fname, ".nc");
