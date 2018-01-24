@@ -42,10 +42,16 @@ int main (int argc, char *argv[]) {
         (options.last + 1 < nctx.dim[TIME]) ? options.last : nctx.dim[TIME] - 1;
 
     PetscPrintf (
-        PETSC_COMM_WORLD, "Steps in file '%s': %zu-%zu\n"
-                          "Computing steps:%*s  %zu-%zu\n",
-        ncfile.name, 0, nctx.dim[TIME] - 1, strlen (ncfile.name), "", first,
-        last);
+        PETSC_COMM_WORLD,
+        "  ___ ________  \n"
+        " / _ \\__  / _ \\ \n"
+        "| | | |/ / | | |\n"
+        "| |_| / /| |_| |\n"
+        " \\___/____\\___/ \n\n"
+        "Input file      : %s\n"
+        "Steps in file   : %zu-%zu\n"
+        "Computing steps : %zu-%zu\n\n",
+        ncfile.name, 0, nctx.dim[TIME] - 1, first, last);
 
     context_create (ncfile, &ctx);
 
