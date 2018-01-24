@@ -25,7 +25,7 @@ extern PetscErrorCode omega_qg_compute_operator (
     const double R   = Specific_gas_constant_of_dry_air;
     const double c_p = Specific_heat_of_dry_air;
     PetscScalar *T_ave, *dTdp, *sigma0, *f2;
-    PetscInt     i, j, k, mx, my, mz, xm, ym, zm, xs, ys, zs;
+    PetscInt     mx, my, mz, xm, ym, zm, xs, ys, zs;
     PetscScalar  v[7], HyHzdHx, HxHzdHy, HxHydHz;
     const int    sm = 7;
     MatStencil   row, col[sm];
@@ -52,7 +52,7 @@ extern PetscErrorCode omega_qg_compute_operator (
     HxHzdHy = ctx->hx * ctx->hz / ctx->hy;
     HxHydHz = ctx->hx * ctx->hy / ctx->hz;
 
-    for (k = zs; k < zs + zm; k++) {
+    for (int k = zs; k < zs + zm; k++) {
         row.k    = k;
         col[0].k = k;
         col[1].k = k;
@@ -62,12 +62,12 @@ extern PetscErrorCode omega_qg_compute_operator (
         col[5].k = k - 1;
         col[6].k = k + 1;
 
-        for (j = ys; j < ys + ym; j++) {
+        for (int j = ys; j < ys + ym; j++) {
             row.j    = j;
             col[0].j = j;
 
             if (k == 0 || k == mz - 1 || j == 0 || j == my - 1) {
-                for (i = xs; i < xs + xm; i++) {
+                for (int i = xs; i < xs + xm; i++) {
                     row.i    = i;
                     col[0].i = i;
                     v[0]     = ctx->hx * ctx->hy * ctx->hz;
@@ -89,7 +89,7 @@ extern PetscErrorCode omega_qg_compute_operator (
                 v[5] = f2[j] * HxHydHz;
                 v[6] = f2[j] * HxHydHz;
 
-                for (i = xs; i < xs + xm; i++) {
+                for (int i = xs; i < xs + xm; i++) {
                     row.i    = i;
                     col[0].i = i;
                     // col[1].i = (i + mx - 1) % mx ;

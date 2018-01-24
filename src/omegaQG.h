@@ -6,6 +6,8 @@
 
 #define OMEGA_QG_ID_STRING "ome_qg"
 
+#define NUM_QUASI_GEOSTROPHIC_OMEGA_EQS 1
+
 extern PetscErrorCode omega_qg_compute_operator(KSP ksp, Mat dummy,
                                                 Mat L, void *ctx_p);
 

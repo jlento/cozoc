@@ -4,7 +4,7 @@
 
 #define MAXLEN 256
 
-Options new_options () {
+Options new_options ( void ) {
 
     Options options = {.fname = "wrf.nc4",
                        .first = 0,
@@ -25,7 +25,7 @@ Options new_options () {
             "-r",
             "Range of steps to compute, counting form zero, -r <start>,<stop>",
             0, s, s, MAXLEN, 0));
-    sscanf (s, "%u,%u", &options.first, &options.last);
+    sscanf (s, "%zu,%zu", &options.first, &options.last);
 
     CHKERRQ (
         PetscOptionsBool (
@@ -41,4 +41,4 @@ Options new_options () {
     PetscOptionsEnd ();
 
     return options;
-};
+}

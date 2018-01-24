@@ -1,16 +1,16 @@
 ---
 BasedOnStyle: LLVM
 AlignAfterOpenBracket: AlwaysBreak
-#AlignConsecutiveAssignments: true
-#AlignConsecutiveDeclarations: true
-#AlignTrailingComments: true
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignTrailingComments: true
 #AllowShortBlocksOnASingleLine: true
 #BinPackArguments: false
 #BinPackParameters: false
 #BreakBeforeBraces: Attach
-#ColumnLimit: 80
+ColumnLimit: 80
 IndentWidth: 4
 #PenaltyReturnTypeOnItsOwnLine: 255
 #PointerAlignment: Left
 SpaceBeforeParens: Always
-#SpacesBeforeTrailingComments: 4
+SpacesBeforeTrailingComments: 4

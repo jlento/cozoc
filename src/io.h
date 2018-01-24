@@ -1,22 +1,25 @@
 #pragma once
 
-#include "context.h"
+#include "grids.h"
 #include "netcdf.h"
 #include "petscdm.h"
+#include "options.h"
 
-#define DIMENSIONS TIME, ZDIM, YDIM, XDIM
-#define WRF_DIMNAMES "time", "vlevs", "south_north", "west_east"
+typedef enum NCFILETYPE { NCFILETYPE_WRF } NCFILETYPE;
+#define NUM_NCFILETYPE 1
 
-typedef enum NCFileType NCFileType;
-enum NCFileType { WRF, NTYPES };
+typedef enum DIM { DIM_T, DIM_Z, DIM_Y, DIM_X } DIM;
+#define NUM_DIM 4
 
-// typedef enum Dimensions Dimensions;
-// enum Dimensions { DIMENSIONS, NDIMS };
-
-
+#define DIMNAME_WRF "time", "vlevs", "south_north", "west_east"
 
 
-enum dimensions { DIMENSIONS, NDIMS };
+
+
+
+
+
+enum dimensions { TIME, ZDIM, YDIM, XDIM, NDIMS };
 
 extern const char *dimnames[NDIMS];
 
@@ -37,12 +40,15 @@ typedef struct NCFile NCFile;
 struct NCFile {
     char name[PETSC_MAX_PATH_LEN];
     int id;
-    NCFileType type;
-    char dimname[NDIMS][NC_MAX_NAME + 1];
-    size_t dim[NDIMS];
+    NCFILETYPE file_type;
+    GRIDTYPE grid_type;
+    char dimname[NUM_DIM][NC_MAX_NAME + 1];
 };
 
 NCFile new_file (Options);
+
+
+
 
 int file_open (const char *wrfin, int *ncid);
 int file_close (const int ncid);

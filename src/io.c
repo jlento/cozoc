@@ -22,30 +22,30 @@ static int io_nc_open_par (char const fname[PETSC_MAX_PATH_LEN]) {
     return ncid;
 }
 
-static NCFileType get_nc_file_type (Options const options, int const ncid) {
-    return WRF;
+static NCFILETYPE get_nc_file_type (Options const options, int const ncid) {
+    return NCFILETYPE_WRF;
+}
+
+static GRIDTYPE get_grid_type (Options const options, int const ncid) {
+    return GRIDTYPE_RECTANGULAR;
 }
 
 NCFile new_file (Options options) {
     NCFile ncfile;
     strcpy (ncfile.name, options.fname);
     ncfile.id = io_nc_open_par (options.fname);
-    ncfile.type = get_nc_file_type (options, ncfile.id);
-    if (ncfile.type == WRF) {
-        const char dimname[NDIMS][NC_MAX_NAME] = { WRF_DIMNAMES };
-        for (size_t i = 0; i < NDIMS; ++i) {
+    ncfile.file_type = get_nc_file_type (options, ncfile.id);
+    if (ncfile.file_type == NCFILETYPE_WRF) {
+        const char dimname[NUM_DIM][NC_MAX_NAME] = { DIMNAME_WRF };
+        for (size_t i = 0; i < NUM_DIM; ++i) {
             strcpy (ncfile.dimname[i], dimname[i]);
         }
     } else {
         SETERRABORT (PETSC_COMM_SELF, 1, "Could not determine input file type");
     };
-    for (size_t i = 0; i < NDIMS; ++i) {
-        int dimid;
-        ERR (nc_inq_dimid (ncfile.id, dimnames[i], &dimid));
-        ERR (nc_inq_dimlen (ncfile.id, dimid, &ncfile.dim[i]));
-    }
+    ncfile.grid_type = get_grid_type(options, ncfile.id);
     return ncfile;
-};
+}
 
 
 

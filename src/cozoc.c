@@ -19,6 +19,7 @@ static char help[] =
 */
 
 #include "context.h"
+#include "equation.h"
 #include "io.h"
 #include "omega.h"
 #include "omegaQG.h"
@@ -35,7 +36,7 @@ static PetscErrorCode output_setup (const int ncid, const Options options) {
         file_def_var (ncid, OMEGA_QG_ID_STRING);
 
     if (options.compute_omega_generalized) {
-        for (int i = 0; i < N_OMEGA_COMPONENTS; i++)
+        for (int i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++)
             file_def_var (ncid, omega_component_id_string[i]);
     }
 
@@ -45,24 +46,24 @@ static PetscErrorCode output_setup (const int ncid, const Options options) {
 }
 
 int main (int argc, char *argv[]) {
-    KSP ksp;
-    Vec x;
+    KSP     ksp;
+    Vec     x;
     Context ctx;
 
     PetscInitialize (&argc, &argv, 0, help);
 
-    Options options = new_options ();
-    NCFile ncfile = new_file (options);
+    Options   options = new_options ();
+    NCFile    ncfile  = new_file (options);
+    nContext  nctx    = new_context (options, ncfile);
+    Equations eqs     = new_equations (options, ncfile);
 
     size_t start = (options.first > 0) ? options.first : 0;
-    size_t stop = (options.last + 1 < ncfile.dim[TIME]) ? (options.last + 1)
-                                                        : ncfile.dim[TIME];
+    size_t stop =
+        (options.last + 1 < nctx.dim[TIME]) ? options.last + 1 : nctx.dim[TIME];
     PetscPrintf (
-        PETSC_COMM_WORLD, "Computing %zu steps, %zu-%zu(%zu)\n",
-        stop - start, start, stop - 1, ncfile.dim[TIME] - 1);
+        PETSC_COMM_WORLD, "Computing %zu steps, %zu-%zu(%zu)\n", stop - start,
+        start, stop - 1, nctx.dim[TIME] - 1);
 
-    // Context context = new_context (options, ncfile);
-    PetscPrintf(PETSC_COMM_WORLD, "OK 1\n");
     context_create (ncfile.id, start, stop, &ctx);
     output_setup (ncfile.id, options);
 
@@ -75,26 +76,14 @@ int main (int argc, char *argv[]) {
 
         context_update (ncfile.id, t, &ctx);
 
-        if (options.compute_omega_quasi_geostrophic) {
-            KSPSetComputeOperators (ksp, omega_qg_compute_operator, &ctx);
-            KSPSetComputeRHS (ksp, omega_qg_compute_rhs, &ctx);
+        for (size_t i = 0; i < eqs.num_eq; i++) {
+            KSPSetComputeOperators (ksp, eqs.L[i], &ctx);
+            KSPSetComputeRHS (ksp, eqs.a[i], &ctx);
             KSPSolve (ksp, 0, 0);
             KSPGetSolution (ksp, &x);
-            write3D (ncfile.id, t, OMEGA_QG_ID_STRING, x);
+            write3D (ncfile.id, t, eqs.id_string[i], x);
         }
 
-        // write3D (ncfile.id, t, OMEGA_QG_ID_STRING, ctx->Temperature); }
-
-        if (options.compute_omega_generalized) {
-            KSPSetComputeOperators (ksp, omega_compute_operator, &ctx);
-
-            for (int i = 0; i < N_OMEGA_COMPONENTS; i++) {
-                KSPSetComputeRHS (ksp, omega_compute_rhs[i], &ctx);
-                KSPSolve (ksp, 0, 0);
-                KSPGetSolution (ksp, &x);
-                write3D (ncfile.id, t, omega_component_id_string[i], x);
-            }
-        }
     }
 
     KSPDestroy (&ksp);

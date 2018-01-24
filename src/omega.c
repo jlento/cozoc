@@ -9,10 +9,10 @@
 #include "omega_stencil.inc"
 
 
-char* omega_component_id_string[N_OMEGA_COMPONENTS] = {
+char omega_component_id_string[NUM_GENERALIZED_OMEGA_COMPONENTS][NC_MAX_NAME] = {
     "ome_v", "ome_t", "ome_f", "ome_q", "ome_a" };
 
-PetscErrorCode (*omega_compute_rhs[N_OMEGA_COMPONENTS]) (
+PetscErrorCode (*omega_compute_rhs[NUM_GENERALIZED_OMEGA_COMPONENTS]) (
     KSP ksp, Vec b, void* ctx_p) = {omega_compute_rhs_F_V,
                                     omega_compute_rhs_F_T,
                                     omega_compute_rhs_F_F,

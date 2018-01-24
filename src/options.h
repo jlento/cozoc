@@ -12,4 +12,4 @@ struct Options {
     PetscBool compute_omega_generalized;
 };
 
-extern Options new_options ();
+extern Options new_options ( void );
