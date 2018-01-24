@@ -19,7 +19,6 @@ nContext new_context (Options const options, NCFile const ncfile) {
 }
 
 int context_create (NCFile ncfile, Context *ctx) {
-    PetscPrintf (PETSC_COMM_WORLD, "OK 2\n");
 
     /* Open Input/output file and read the dimensions */
 
@@ -298,7 +297,7 @@ static int horizontal_wind_and_vorticity (
     const int ncid, const int step, DM da, DM da2, size_t my, PetscScalar hx,
     PetscScalar hy, Vec tmpvec, Vec V, Vec zeta) {
     for (int i = 0; i < 2; i++) {
-        char *name[2] = {"UU", "VV"};
+        char name[2][3] = {"UU", "VV"};
         file_read_3d (ncid, step, name[i], tmpvec);
         VecStrideScatter (tmpvec, i, V, INSERT_VALUES);
     }
@@ -623,11 +622,13 @@ int context_update (
     friction (ctx, ncfile.id, step, mu_inv);
 
     if (step == last) {
+        PetscPrintf(PETSC_COMM_WORLD, "FIX: context_update fails to free vectors\n");
+        /*
         VecDestroy (&Tnext);
         VecDestroy (&Vnext);
         VecDestroy (&zetanext);
-        VecDestroy (&Tnext);
         DMRestoreGlobalVector (daxy, &mu_inv);
+        */
     }
 
     return (0);

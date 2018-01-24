@@ -21,10 +21,7 @@ static char help[] =
 #include "context.h"
 #include "equation.h"
 #include "io.h"
-#include "omega.h"
-#include "omegaQG.h"
 #include "options.h"
-#include <limits.h>
 #include <petscdmda.h>
 #include <petscksp.h>
 
@@ -42,11 +39,13 @@ int main (int argc, char *argv[]) {
 
     size_t first = (options.first > 0) ? options.first : 0;
     size_t last =
-        (options.last + 1 < nctx.dim[TIME]) ? options.last + 1 : nctx.dim[TIME];
+        (options.last + 1 < nctx.dim[TIME]) ? options.last : nctx.dim[TIME] - 1;
 
     PetscPrintf (
-        PETSC_COMM_WORLD, "Computing %zu steps, %zu-%zu(%zu)\n", last - first,
-        first, last - 1, nctx.dim[TIME] - 1);
+        PETSC_COMM_WORLD, "Steps in file '%s': %zu-%zu\n"
+                          "Computing steps:%*s  %zu-%zu\n",
+        ncfile.name, 0, nctx.dim[TIME] - 1, strlen (ncfile.name), "", first,
+        last);
 
     context_create (ncfile, &ctx);
 
@@ -54,7 +53,7 @@ int main (int argc, char *argv[]) {
     KSPSetDM (ksp, ctx.da);
     KSPSetFromOptions (ksp);
 
-    for (size_t t = first; t < last; t++) {
+    for (size_t t = first; t < last + 1; t++) {
 
         PetscPrintf (PETSC_COMM_WORLD, "Step: %d\n", t);
 
