@@ -9,10 +9,7 @@
 #include <petscksp.h>
 
 nContext new_context (Options const options, NCFile const ncfile) {
-    nContext ctx = {
-        .step = 0,
-        .dim = {0, 0, 0, 0}
-    };
+    nContext ctx = {.step = 0, .dim = {0, 0, 0, 0}};
     for (size_t i = 0; i < NDIMS; ++i) {
         int dimid;
         ERR (nc_inq_dimid (ncfile.id, ncfile.dimname[i], &dimid));
@@ -21,52 +18,15 @@ nContext new_context (Options const options, NCFile const ncfile) {
     return ctx;
 }
 
-int context_create (
-    const int ncid, PetscInt first, PetscInt last, Context *ctx) {
+int context_create (NCFile ncfile, Context *ctx) {
     PetscPrintf (PETSC_COMM_WORLD, "OK 2\n");
-    PetscInt skip_v = first;
-    PetscInt steps_v = last - first;
-    PetscInt *skip = &skip_v;
-    PetscInt *steps = &steps_v;
-    PetscPrintf (PETSC_COMM_WORLD, "Skip %d, steps %d\n", *skip, *steps);
-    PetscPrintf (PETSC_COMM_WORLD, "OK 3\n");
 
     /* Open Input/output file and read the dimensions */
 
-    file_get_dimsize (ncid, dimnames[XDIM], &ctx->mx);
-    file_get_dimsize (ncid, dimnames[YDIM], &ctx->my);
-    file_get_dimsize (ncid, dimnames[ZDIM], &ctx->mz);
-    file_get_dimsize (ncid, dimnames[TIME], &ctx->mt);
-
-    if (*skip < 0)
-        *skip = ctx->mt + *skip;
-
-    if (*steps > (int)ctx->mt - *skip) {
-        WARNING ("Adjusting the number of user requested time steps");
-        *steps = (int)ctx->mt - *skip;
-    }
-
-    PetscPrintf (
-        PETSC_COMM_WORLD, "Number of time steps in the input file: %d\n",
-        ctx->mt);
-    PetscPrintf (
-        PETSC_COMM_WORLD,
-        "Number of time steps to skip from the beginning of the input "
-        "file: %d\n",
-        *skip);
-    PetscPrintf (
-        PETSC_COMM_WORLD, "Number of time steps to calculate: %d\n", *steps);
-
-    if (ctx->mt < 2)
-        ERROR (
-            "At least two time steps needed in the input file for "
-            "the calculation of the tendencies");
-
-    if (*steps < 1)
-        ERROR ("Number of requested time steps < 1");
-
-    ctx->skip = *skip;
-    ctx->steps = *steps;
+    file_get_dimsize (ncfile.id, dimnames[XDIM], &ctx->mx);
+    file_get_dimsize (ncfile.id, dimnames[YDIM], &ctx->my);
+    file_get_dimsize (ncfile.id, dimnames[ZDIM], &ctx->mz);
+    file_get_dimsize (ncfile.id, dimnames[TIME], &ctx->mt);
 
     /* Set up the distributed 3D array layout for 1- and 2-component
      * fields */
@@ -109,7 +69,7 @@ int context_create (
         size_t start[1] = {0};
         size_t count[1] = {ctx->mt};
         file_read_array_double (
-            ncid, fieldnames[TIME_COORDINATE], start, count,
+            ncfile.id, fieldnames[TIME_COORDINATE], start, count,
             ctx->Time_coordinate);
 
         for (int i = 0; i < (int)ctx->mt; i++)
@@ -121,7 +81,7 @@ int context_create (
         size_t start[1] = {0};
         size_t count[1] = {ctx->mz};
         file_read_array_double (
-            ncid, fieldnames[Z_COORDINATE], start, count, ctx->Pressure);
+            ncfile.id, fieldnames[Z_COORDINATE], start, count, ctx->Pressure);
     }
 
     /* Coriollis parameter is taken to be a function of latitude, only
@@ -130,27 +90,28 @@ int context_create (
         size_t start[3] = {0, 0, 0};
         size_t count[3] = {1, ctx->my, 1};
         file_read_array_double (
-            ncid, fieldnames[CORIOLIS], start, count, ctx->Coriolis_parameter);
+            ncfile.id, fieldnames[CORIOLIS], start, count,
+            ctx->Coriolis_parameter);
     }
 
     /* Grid spacings */
-    file_read_attribute (ncid, "DX", &ctx->hx);
-    file_read_attribute (ncid, "DY", &ctx->hy);
+    file_read_attribute (ncfile.id, "DX", &ctx->hx);
+    file_read_attribute (ncfile.id, "DY", &ctx->hy);
     ctx->hz = ctx->Pressure[1] - ctx->Pressure[0]; /* hz is negative!!! */
 
-    file_read_int_attribute (ncid, "CU_PHYSICS", &ctx->cu_physics);
+    file_read_int_attribute (ncfile.id, "CU_PHYSICS", &ctx->cu_physics);
 
     return (0);
 }
 
 static int temperature (
-    int ncid, int step, int skip, size_t mt, double *t, Vec *T, Vec *Ttend,
-    Vec *Tnext) {
+    int ncid, size_t step, size_t first, size_t mt, double *t, Vec *T,
+    Vec *Ttend, Vec *Tnext) {
 
     Vec tmpvec;
 
-    if (step == skip) {
-        if (step == 0) {
+    if (step == first) {
+        if (first == 0) {
             file_read_3d (ncid, step, "TT", *T);
             file_read_3d (ncid, step + 1, "TT", *Tnext);
             VecCopy (*T, *Ttend);
@@ -164,15 +125,15 @@ static int temperature (
             VecScale (*Ttend, -1.0 / (double)(t[step + 1] - t[step - 1]));
         }
     } else {
-        if (step == (int)mt - 1) {
+        if (step == mt - 1) {
             *Ttend = *T;
-            *T = *Tnext;
+            *T     = *Tnext;
             VecAXPY (*Ttend, -1.0, *T);
             VecScale (*Ttend, -1.0 / (double)(t[step] - t[step - 1]));
         } else {
             tmpvec = *Ttend;
             *Ttend = *T;
-            *T = *Tnext;
+            *T     = *Tnext;
             *Tnext = tmpvec;
             file_read_3d (ncid, step + 1, "TT", *Tnext);
             VecAXPY (*Ttend, -1.0, *Tnext);
@@ -226,9 +187,9 @@ static int sigma_parameter (
 
 static int
 sigma_parameter (DM da, PetscInt mz, PetscScalar *p, Vec Tvec, Vec sigmavec) {
-    const double R = Specific_gas_constant_of_dry_air;
-    const double c_p = Specific_heat_of_dry_air;
-    PetscInt zs, ys, xs, zm, ym, xm;
+    const double   R   = Specific_gas_constant_of_dry_air;
+    const double   c_p = Specific_heat_of_dry_air;
+    PetscInt       zs, ys, xs, zm, ym, xm;
     PetscScalar ***T;
     PetscScalar ***sigma;
 
@@ -347,14 +308,14 @@ static int horizontal_wind_and_vorticity (
 }
 
 static int horizontal_wind_and_vorticity_and_vorticity_tendency (
-    int ncid, int step, int skip, size_t mt, double *t, DM da, DM da2,
+    int ncid, size_t step, size_t first, size_t mt, double *t, DM da, DM da2,
     size_t my, PetscScalar hx, PetscScalar hy, Vec *V, Vec *Vnext, Vec *zeta,
     Vec *zetatend, Vec *zetanext) {
 
     Vec tmpvec;
 
-    if (step == skip) {
-        if (step == 0) {
+    if (step == first) {
+        if (first == 0) {
             tmpvec = *zetatend;
             horizontal_wind_and_vorticity (
                 ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
@@ -375,19 +336,19 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
             VecScale (*zetatend, -1.0 / (double)(t[step + 1] - t[step - 1]));
         }
     } else {
-        if (step == (int)mt - 1) {
-            *V = *Vnext;
+        if (step == mt - 1) {
+            *V        = *Vnext;
             *zetatend = *zeta;
-            *zeta = *zetanext;
+            *zeta     = *zetanext;
             VecAXPY (*zetatend, -1.0, *zeta);
             VecScale (*zetatend, -1.0 / (double)(t[step] - t[step - 1]));
         } else {
-            tmpvec = *V;
-            *V = *Vnext;
-            *Vnext = tmpvec;
-            tmpvec = *zetatend;
+            tmpvec    = *V;
+            *V        = *Vnext;
+            *Vnext    = tmpvec;
+            tmpvec    = *zetatend;
             *zetatend = *zeta;
-            *zeta = *zetanext;
+            *zeta     = *zetanext;
             *zetanext = tmpvec;
             horizontal_wind_and_vorticity (
                 ncid, step + 1, da, da2, my, hx, hy, tmpvec, *Vnext, *zetanext);
@@ -402,7 +363,7 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
 static int one_over_dry_air_mass_column (
     Vec mu_inv, const int ncid, const int step, Context *ctx) {
 
-    DM daxy = ctx->daxy;
+    DM  daxy = ctx->daxy;
     Vec tmp2d;
 
     DMGetGlobalVector (daxy, &tmp2d);
@@ -417,15 +378,15 @@ static int one_over_dry_air_mass_column (
 static int
 diabatic_heating (Context *ctx, const int ncid, const int step, Vec mvec) {
 
-    DM da = ctx->da;
-    DM daxy = ctx->daxy;
-    int cu_physics = ctx->cu_physics;
-    Vec Q = ctx->Diabatic_heating;
-    PetscScalar *p = ctx->Pressure;
-    const double r = Specific_gas_constant_of_dry_air;
-    const double cp = Specific_heat_of_dry_air;
-    Vec tmp3d;
-    PetscInt zs, ys, xs, zm, ym, xm;
+    DM            da         = ctx->da;
+    DM            daxy       = ctx->daxy;
+    int           cu_physics = ctx->cu_physics;
+    Vec           Q          = ctx->Diabatic_heating;
+    PetscScalar * p          = ctx->Pressure;
+    const double  r          = Specific_gas_constant_of_dry_air;
+    const double  cp         = Specific_heat_of_dry_air;
+    Vec           tmp3d;
+    PetscInt      zs, ys, xs, zm, ym, xm;
     PetscScalar **ma, ***qa;
 
     DMGetGlobalVector (da, &tmp3d);
@@ -481,13 +442,13 @@ diabatic_heating (Context *ctx, const int ncid, const int step, Vec mvec) {
 
 static int friction (Context *ctx, const int ncid, const int step, Vec mvec) {
 
-    DM da = ctx->da;
-    DM da2 = ctx->da2;
-    DM daxy = ctx->daxy;
-    int cu_physics = ctx->cu_physics;
-    Vec F = ctx->Friction;
-    Vec tmp3d;
-    PetscInt zs, ys, xs, zm, ym, xm;
+    DM            da         = ctx->da;
+    DM            da2        = ctx->da2;
+    DM            daxy       = ctx->daxy;
+    int           cu_physics = ctx->cu_physics;
+    Vec           F          = ctx->Friction;
+    Vec           tmp3d;
+    PetscInt      zs, ys, xs, zm, ym, xm;
     PetscScalar **ma, ****fa;
 
     DMGetGlobalVector (da, &tmp3d);
@@ -615,53 +576,53 @@ int context_destroy (Context *ctx) {
 }
 */
 
-int context_update (const int ncid, const int step, Context *ctx) {
+int context_update (
+    NCFile ncfile, const size_t step, const size_t first, const size_t last,
+    Context *ctx) {
 
-    DM da = ctx->da;
-    DM da2 = ctx->da2;
-    DM daxy = ctx->daxy;
-    size_t my = ctx->my;
-    size_t mz = ctx->mz;
-    size_t mt = ctx->mt;
-    PetscScalar hx = ctx->hx;
-    PetscScalar hy = ctx->hy;
-    double *time = ctx->Time_coordinate;
-    int skip = ctx->skip;
-    int steps = ctx->steps;
-    PetscScalar *p = ctx->Pressure;
-    Vec psfc = ctx->Surface_pressure;
-    Vec Z = ctx->Geopotential_height;
-    Vec *T = &ctx->Temperature;
-    Vec *Ttend = &ctx->Temperature_tendency;
-    Vec sigma = ctx->Sigma_parameter;
-    Vec *V = &ctx->Horizontal_wind;
-    Vec *zeta = &ctx->Vorticity;
-    Vec *zetatend = &ctx->Vorticity_tendency;
+    DM           da       = ctx->da;
+    DM           da2      = ctx->da2;
+    DM           daxy     = ctx->daxy;
+    size_t       my       = ctx->my;
+    size_t       mz       = ctx->mz;
+    size_t       mt       = ctx->mt;
+    PetscScalar  hx       = ctx->hx;
+    PetscScalar  hy       = ctx->hy;
+    double *     time     = ctx->Time_coordinate;
+    PetscScalar *p        = ctx->Pressure;
+    Vec          psfc     = ctx->Surface_pressure;
+    Vec          Z        = ctx->Geopotential_height;
+    Vec *        T        = &ctx->Temperature;
+    Vec *        Ttend    = &ctx->Temperature_tendency;
+    Vec          sigma    = ctx->Sigma_parameter;
+    Vec *        V        = &ctx->Horizontal_wind;
+    Vec *        zeta     = &ctx->Vorticity;
+    Vec *        zetatend = &ctx->Vorticity_tendency;
 
-    static Vec Tnext = NULL;
-    static Vec Vnext = NULL;
+    static Vec Tnext    = NULL;
+    static Vec Vnext    = NULL;
     static Vec zetanext = NULL;
-    static Vec mu_inv = NULL;
+    static Vec mu_inv   = NULL;
 
-    if (step == skip) { // The first step
+    if (step == first) {    // The first step
         VecDuplicate (*T, &Tnext);
         VecDuplicate (*V, &Vnext);
         VecDuplicate (*zeta, &zetanext);
         DMGetGlobalVector (daxy, &mu_inv);
     }
 
-    read2D (ncid, step, "PSFC", psfc);
-    file_read_3d (ncid, step, "GHT", Z);
-    temperature (ncid, step, skip, mt, time, T, Ttend, &Tnext);
+    read2D (ncfile.id, step, "PSFC", psfc);
+    file_read_3d (ncfile.id, step, "GHT", Z);
+    temperature (ncfile.id, step, first, mt, time, T, Ttend, &Tnext);
     sigma_parameter (da, mz, p, *T, sigma);
     horizontal_wind_and_vorticity_and_vorticity_tendency (
-        ncid, step, skip, mt, time, da, da2, my, hx, hy, V, &Vnext, zeta,
+        ncfile.id, step, first, mt, time, da, da2, my, hx, hy, V, &Vnext, zeta,
         zetatend, &zetanext);
-    one_over_dry_air_mass_column (mu_inv, ncid, step, ctx);
-    diabatic_heating (ctx, ncid, step, mu_inv);
-    friction (ctx, ncid, step, mu_inv);
+    one_over_dry_air_mass_column (mu_inv, ncfile.id, step, ctx);
+    diabatic_heating (ctx, ncfile.id, step, mu_inv);
+    friction (ctx, ncfile.id, step, mu_inv);
 
-    if (step == skip + steps) {
+    if (step == last) {
         VecDestroy (&Tnext);
         VecDestroy (&Vnext);
         VecDestroy (&zetanext);

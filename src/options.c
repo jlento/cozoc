@@ -23,7 +23,7 @@ Options new_options ( void ) {
     CHKERRQ (
         PetscOptionsString (
             "-r",
-            "Range of steps to compute, counting form zero, -r <start>,<stop>",
+            "Range of steps to compute, counting form zero, -r <first>,<last>",
             0, s, s, MAXLEN, 0));
     sscanf (s, "%zu,%zu", &options.first, &options.last);
 

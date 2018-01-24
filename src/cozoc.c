@@ -40,23 +40,25 @@ int main (int argc, char *argv[]) {
     nContext  nctx    = new_context (options, ncfile);
     Equations eqs     = new_equations (options, ncfile);
 
-    size_t start = (options.first > 0) ? options.first : 0;
-    size_t stop =
+    size_t first = (options.first > 0) ? options.first : 0;
+    size_t last =
         (options.last + 1 < nctx.dim[TIME]) ? options.last + 1 : nctx.dim[TIME];
-    PetscPrintf (
-        PETSC_COMM_WORLD, "Computing %zu steps, %zu-%zu(%zu)\n", stop - start,
-        start, stop - 1, nctx.dim[TIME] - 1);
 
-    context_create (ncfile.id, start, stop, &ctx);
+    PetscPrintf (
+        PETSC_COMM_WORLD, "Computing %zu steps, %zu-%zu(%zu)\n", last - first,
+        first, last - 1, nctx.dim[TIME] - 1);
+
+    context_create (ncfile, &ctx);
 
     KSPCreate (PETSC_COMM_WORLD, &ksp);
     KSPSetDM (ksp, ctx.da);
     KSPSetFromOptions (ksp);
 
-    for (size_t t = start; t < stop; t++) {
-        PetscPrintf (PETSC_COMM_WORLD, "Time step: %d\n", t);
+    for (size_t t = first; t < last; t++) {
 
-        context_update (ncfile.id, t, &ctx);
+        PetscPrintf (PETSC_COMM_WORLD, "Step: %d\n", t);
+
+        context_update (ncfile, t, first, last, &ctx);
 
         for (size_t i = 0; i < eqs.num_eq; i++) {
             KSPSetComputeOperators (ksp, eqs.L[i], &ctx);
