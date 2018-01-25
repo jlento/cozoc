@@ -34,6 +34,4 @@ Context new_context (Options, NCFile);
 
 void free_context (Context *ctx);
 
-void update_context (
-    NCFile, size_t const step, size_t const first, size_t const last,
-    Context *ctx);
+void update_context (size_t, NCFile, Context*);

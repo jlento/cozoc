@@ -573,9 +573,7 @@ int context_destroy (Context *ctx) {
 }
 */
 
-void update_context (
-    NCFile ncfile, const size_t step, const size_t first, const size_t last,
-    Context *ctx) {
+void update_context (size_t step, NCFile ncfile, Context *ctx) {
 
     DM           da       = ctx->da;
     DM           da2      = ctx->da2;
@@ -601,7 +599,7 @@ void update_context (
     static Vec zetanext = NULL;
     static Vec mu_inv   = NULL;
 
-    if (step == first) {    // The first step
+    if (step == ctx->first) {    // The first step
         VecDuplicate (*T, &Tnext);
         VecDuplicate (*V, &Vnext);
         VecDuplicate (*zeta, &zetanext);
@@ -610,16 +608,16 @@ void update_context (
 
     read2D (ncfile.id, step, "PSFC", psfc);
     file_read_3d (ncfile.id, step, "GHT", Z);
-    temperature (ncfile.id, step, first, mt, time, T, Ttend, &Tnext);
+    temperature (ncfile.id, step, ctx->first, mt, time, T, Ttend, &Tnext);
     sigma_parameter (da, mz, p, *T, sigma);
     horizontal_wind_and_vorticity_and_vorticity_tendency (
-        ncfile.id, step, first, mt, time, da, da2, my, hx, hy, V, &Vnext, zeta,
+        ncfile.id, step, ctx->first, mt, time, da, da2, my, hx, hy, V, &Vnext, zeta,
         zetatend, &zetanext);
     one_over_dry_air_mass_column (mu_inv, ncfile.id, step, ctx);
     diabatic_heating (ctx, ncfile.id, step, mu_inv);
     friction (ctx, ncfile.id, step, mu_inv);
 
-    if (step == last) {
+    if (step == ctx->last) {
         PetscPrintf (
             PETSC_COMM_WORLD, "FIX: context_update fails to free vectors\n");
         /*

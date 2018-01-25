@@ -20,4 +20,4 @@ struct Equations {
 };
 
 Equations new_equations (Options, NCFile);
-Vec solution (Equations, size_t, Context);
+Vec solution (ComputeLHSOperatorFunction, ComputeRHSVectorFunction, Context);
