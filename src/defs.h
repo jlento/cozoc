@@ -1,22 +1,23 @@
 #pragma once
 
-#include <petscsys.h>
-#include <petscdmda.h>
+#include <stdlib.h>
+
+// figlet OZO | sed 's/^/"/;s/\\/\\\\/g;s/$/\\n"/'
+#define BANNER                                                                 \
+    "  ___ ________  \n"                                                       \
+    " / _ \\__  / _ \\ \n"                                                     \
+    "| | | |/ / | | |\n"                                                       \
+    "| |_| / /| |_| |\n"                                                       \
+    " \\___/____\\___/ \n"                                                     \
+    "                \n"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0])
 #define ERROR(msg) SETERRQ (PETSC_COMM_WORLD, 1, msg)
-#define WARNING(msg) PetscPrintf (PETSC_COMM_WORLD, "%s\n", msg)
+#define info(...) PetscPrintf (PETSC_COMM_WORLD, __VA_ARGS__)
 
-/*
-typedef enum FIELD FIELD;
-enum FIELD { TEMPERATURE };
-
-typedef Vec (*UpdateFunction)(FIELD, size_t, int);
-
-typedef struct Update Update;
-struct Update {
-    UpdateFunction temperature;
-};
-
-typedef Update (*RegisterUpdateFunctionsFunction)(void);
-*/
+static inline size_t max_of_size_t (size_t i, size_t j) {
+    return (i > j ? i : j);
+}
+static inline size_t min_of_size_t (size_t i, size_t j) {
+    return (i < j ? i : j);
+}

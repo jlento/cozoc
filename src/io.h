@@ -46,16 +46,17 @@ struct NCFile {
 };
 
 NCFile new_file (Options);
+void close_file (const NCFile);
 
 
 
 
 int file_open (const char *wrfin, int *ncid);
-int file_close (const int ncid);
 int file_redef (const int ncid);
 int file_enddef (const int ncid);
 int file_def_var (const int ncid, const char *name);
-int file_get_dimsize (const int ncid, const char *dimname, size_t *dimsize);
+
+PetscInt file_get_dimsize (const int ncid, const char *dimname);
 
 /* Read 3d (lev,lat,lon) slice from 4d NetCDF array (Time,lev,lat,lon)
  */

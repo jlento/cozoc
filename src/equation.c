@@ -4,6 +4,7 @@
 #include "grids.h"
 #include "omegaQG.h"
 #include "omega.h"
+#include "context.h"
 
 Equations new_equations (Options const options, NCFile const ncfile) {
     Equations eqs = {.num_eq = 0, .L = {0}, .a = {0}, .id_string = {""}};
@@ -23,3 +24,14 @@ Equations new_equations (Options const options, NCFile const ncfile) {
     }
     return eqs;
 }
+
+Vec solution (Equations eqs, size_t ieq, Context ctx) {
+    Vec x;
+    KSPSetComputeOperators (ctx.ksp, eqs.L[ieq], &ctx);
+    KSPSetComputeRHS (ctx.ksp, eqs.a[ieq], &ctx);
+    KSPSolve (ctx.ksp, 0, 0);
+    KSPGetSolution (ctx.ksp, &x);
+    return x;
+}
+
+

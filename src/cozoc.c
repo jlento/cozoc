@@ -1,7 +1,13 @@
-static char help[] =
-    ""
-    "Solves quasi-geostrophic and generalized omega equations, and height\n"
-    "tendency equations from WRF baroclinic test case data.\n"
+#include "context.h"
+#include "defs.h"
+#include "equation.h"
+#include "io.h"
+#include "options.h"
+#include <petscdmda.h>
+#include <petscksp.h>
+
+static char help[] = BANNER
+    "Solves quasi-geostrophic and generalized omega equations.\n"
     "\n"
     "Usage: mpiexec [-n procs] ozoc [-f <fname>] [-h|-Q|-G|-Z]\n"
     "               [-s <n>] [-n <n>]\n"
@@ -14,69 +20,37 @@ static char help[] =
     "  -Q            Disable quasi-geostrophic omega eq calculation\n"
     "  -G            Disable generalized omega eqs calculations\n\n";
 
-/* TODO:
-   "  -Z          Disable height tendency eqs calculations\n\n";
-*/
-
-#include "context.h"
-#include "equation.h"
-#include "io.h"
-#include "options.h"
-#include <petscdmda.h>
-#include <petscksp.h>
-
 int main (int argc, char *argv[]) {
-    KSP     ksp;
-    Vec     x;
-    Context ctx;
 
     PetscInitialize (&argc, &argv, 0, help);
 
-    Options   options = new_options ();
-    NCFile    ncfile  = new_file (options);
-    nContext  nctx    = new_context (options, ncfile);
-    Equations eqs     = new_equations (options, ncfile);
+    const Options   options = new_options ();
+    const NCFile    ncfile  = new_file (options);
+    const Equations eqs     = new_equations (options, ncfile);
+    Context         ctx     = new_context (options, ncfile);
 
-    size_t first = (options.first > 0) ? options.first : 0;
-    size_t last =
-        (options.last + 1 < nctx.dim[TIME]) ? options.last : nctx.dim[TIME] - 1;
+    info (
+        BANNER "Input file      : %s\n"
+               "Steps in file   : %zu-%zu\n"
+               "Computing steps : %zu-%zu\n\n",
+        ncfile.name, 0, ctx.mt - 1, ctx.first, ctx.last);
 
-    PetscPrintf (
-        PETSC_COMM_WORLD,
-        "  ___ ________  \n"
-        " / _ \\__  / _ \\ \n"
-        "| | | |/ / | | |\n"
-        "| |_| / /| |_| |\n"
-        " \\___/____\\___/ \n\n"
-        "Input file      : %s\n"
-        "Steps in file   : %zu-%zu\n"
-        "Computing steps : %zu-%zu\n\n",
-        ncfile.name, 0, nctx.dim[TIME] - 1, first, last);
+    for (size_t istep = ctx.first; istep < ctx.last + 1; istep++) {
 
-    context_create (ncfile, &ctx);
+        info ("Step: %d\n", istep);
 
-    KSPCreate (PETSC_COMM_WORLD, &ksp);
-    KSPSetDM (ksp, ctx.da);
-    KSPSetFromOptions (ksp);
+        update_context (ncfile, istep, ctx.first, ctx.last, &ctx);
 
-    for (size_t t = first; t < last + 1; t++) {
+        for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
 
-        PetscPrintf (PETSC_COMM_WORLD, "Step: %d\n", t);
+            Vec x = solution (eqs, ieq, ctx);
 
-        context_update (ncfile, t, first, last, &ctx);
-
-        for (size_t i = 0; i < eqs.num_eq; i++) {
-            KSPSetComputeOperators (ksp, eqs.L[i], &ctx);
-            KSPSetComputeRHS (ksp, eqs.a[i], &ctx);
-            KSPSolve (ksp, 0, 0);
-            KSPGetSolution (ksp, &x);
-            write3D (ncfile.id, t, eqs.id_string[i], x);
+            write3D (ncfile.id, istep, eqs.id_string[ieq], x);
         }
     }
 
-    KSPDestroy (&ksp);
-    context_destroy (&ctx);
-    file_close (ncfile.id);
+    free_context (&ctx);
+    close_file (ncfile);
     PetscFinalize ();
     return 0;
 }

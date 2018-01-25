@@ -1,6 +1,7 @@
 #include "options.h"
 #include "abortonerror.h"
 #include <petscoptions.h>
+#include <limits.h>
 
 #define MAXLEN 256
 
@@ -8,7 +9,7 @@ Options new_options ( void ) {
 
     Options options = {.fname = "wrf.nc4",
                        .first = 0,
-                       .last = PETSC_MAX_INT,
+                       .last = SIZE_MAX,
                        .compute_omega_quasi_geostrophic = PETSC_TRUE,
                        .compute_omega_generalized = PETSC_TRUE};
     char s[MAXLEN] = "";

@@ -82,17 +82,16 @@ PetscErrorCode file_open (const char *wrfin, int *ncid) {
     }
 }
 
-PetscErrorCode file_close (int ncid) {
-    nc_close (ncid);
-    return (0);
+void close_file (NCFile ncfile) {
+    nc_close (ncfile.id);
 }
 
-PetscErrorCode
-file_get_dimsize (const int ncid, const char *dimname, size_t *dimsize) {
+PetscInt file_get_dimsize (const int ncid, const char *dimname) {
     int dimid;
+    size_t dimsize;
     ERR (nc_inq_dimid (ncid, dimname, &dimid));
-    ERR (nc_inq_dimlen (ncid, dimid, dimsize));
-    return (0);
+    ERR (nc_inq_dimlen (ncid, dimid, &dimsize));
+    return dimsize;
 }
 
 PetscErrorCode file_redef (const int ncid) {

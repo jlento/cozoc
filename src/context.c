@@ -8,57 +8,52 @@
 #include <petscdmda.h>
 #include <petscksp.h>
 
-nContext new_context (Options const options, NCFile const ncfile) {
-    nContext ctx = {.step = 0, .dim = {0, 0, 0, 0}};
-    for (size_t i = 0; i < NDIMS; ++i) {
-        int dimid;
-        ERR (nc_inq_dimid (ncfile.id, ncfile.dimname[i], &dimid));
-        ERR (nc_inq_dimlen (ncfile.id, dimid, &ctx.dim[i]));
-    }
-    return ctx;
-}
+Context new_context (Options const options, NCFile const ncfile) {
+    Context ctx;
 
-int context_create (NCFile ncfile, Context *ctx) {
+    /* Read dimensions */
 
-    /* Open Input/output file and read the dimensions */
-
-    file_get_dimsize (ncfile.id, dimnames[XDIM], &ctx->mx);
-    file_get_dimsize (ncfile.id, dimnames[YDIM], &ctx->my);
-    file_get_dimsize (ncfile.id, dimnames[ZDIM], &ctx->mz);
-    file_get_dimsize (ncfile.id, dimnames[TIME], &ctx->mt);
+    ctx.mx = file_get_dimsize (ncfile.id, dimnames[XDIM]);
+    ctx.my = file_get_dimsize (ncfile.id, dimnames[YDIM]);
+    ctx.mz = file_get_dimsize (ncfile.id, dimnames[ZDIM]);
+    ctx.mt = file_get_dimsize (ncfile.id, dimnames[TIME]);
 
     /* Set up the distributed 3D array layout for 1- and 2-component
      * fields */
 
     DMDACreate3d (
         PETSC_COMM_WORLD, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_NONE,
-        DM_BOUNDARY_NONE, DMDA_STENCIL_BOX, ctx->mx, ctx->my, ctx->mz,
-        PETSC_DECIDE, PETSC_DECIDE, PETSC_DECIDE, 1, 1, 0, 0, 0, &ctx->da);
+        DM_BOUNDARY_NONE, DMDA_STENCIL_BOX, ctx.mx, ctx.my, ctx.mz,
+        PETSC_DECIDE, PETSC_DECIDE, PETSC_DECIDE, 1, 1, 0, 0, 0, &ctx.da);
 
-    DMDAGetReducedDMDA (ctx->da, 2, &ctx->da2);
+    DMDAGetReducedDMDA (ctx.da, 2, &ctx.da2);
 
     /* Set up the distributed 2D array layout (xy-plane) */
 
-    create_subdm_plane (DMDA_Z, ctx->da, &ctx->daxy);
+    create_subdm_plane (DMDA_Z, ctx.da, &ctx.daxy);
+
+    KSPCreate (PETSC_COMM_WORLD, &ctx.ksp);
+    KSPSetDM (ctx.ksp, ctx.da);
+    KSPSetFromOptions (ctx.ksp);
 
     /* Allocate context arrays*/
 
-    PetscMalloc1 (ctx->mz, &ctx->Pressure);
-    PetscMalloc1 (ctx->my, &ctx->Coriolis_parameter);
-    PetscMalloc1 (ctx->mt, &ctx->Time_coordinate);
+    PetscMalloc1 (ctx.mz, &ctx.Pressure);
+    PetscMalloc1 (ctx.my, &ctx.Coriolis_parameter);
+    PetscMalloc1 (ctx.mt, &ctx.Time_coordinate);
 
-    DMCreateGlobalVector (ctx->daxy, &ctx->Surface_pressure);
+    DMCreateGlobalVector (ctx.daxy, &ctx.Surface_pressure);
 
-    DMCreateGlobalVector (ctx->da, &ctx->Temperature);
-    VecDuplicate (ctx->Temperature, &ctx->Sigma_parameter);
-    VecDuplicate (ctx->Temperature, &ctx->Vorticity);
-    VecDuplicate (ctx->Temperature, &ctx->Geopotential_height);
-    VecDuplicate (ctx->Temperature, &ctx->Diabatic_heating);
-    VecDuplicate (ctx->Temperature, &ctx->Temperature_tendency);
-    VecDuplicate (ctx->Temperature, &ctx->Vorticity_tendency);
+    DMCreateGlobalVector (ctx.da, &ctx.Temperature);
+    VecDuplicate (ctx.Temperature, &ctx.Sigma_parameter);
+    VecDuplicate (ctx.Temperature, &ctx.Vorticity);
+    VecDuplicate (ctx.Temperature, &ctx.Geopotential_height);
+    VecDuplicate (ctx.Temperature, &ctx.Diabatic_heating);
+    VecDuplicate (ctx.Temperature, &ctx.Temperature_tendency);
+    VecDuplicate (ctx.Temperature, &ctx.Vorticity_tendency);
 
-    DMCreateGlobalVector (ctx->da2, &ctx->Horizontal_wind);
-    VecDuplicate (ctx->Horizontal_wind, &ctx->Friction);
+    DMCreateGlobalVector (ctx.da2, &ctx.Horizontal_wind);
+    VecDuplicate (ctx.Horizontal_wind, &ctx.Friction);
 
     /* These are read here because they are constants throughout the
      * calculation */
@@ -66,41 +61,44 @@ int context_create (NCFile ncfile, Context *ctx) {
     /* Time coordinate */
     {
         size_t start[1] = {0};
-        size_t count[1] = {ctx->mt};
+        size_t count[1] = {ctx.mt};
         file_read_array_double (
             ncfile.id, fieldnames[TIME_COORDINATE], start, count,
-            ctx->Time_coordinate);
+            ctx.Time_coordinate);
 
-        for (int i = 0; i < (int)ctx->mt; i++)
-            ctx->Time_coordinate[i] *= (double)60;
+        for (int i = 0; i < (int)ctx.mt; i++)
+            ctx.Time_coordinate[i] *= (double)60;
     }
 
     /* Pressure levels (z-coordinate) */
     {
         size_t start[1] = {0};
-        size_t count[1] = {ctx->mz};
+        size_t count[1] = {ctx.mz};
         file_read_array_double (
-            ncfile.id, fieldnames[Z_COORDINATE], start, count, ctx->Pressure);
+            ncfile.id, fieldnames[Z_COORDINATE], start, count, ctx.Pressure);
     }
 
     /* Coriollis parameter is taken to be a function of latitude, only
      */
     {
         size_t start[3] = {0, 0, 0};
-        size_t count[3] = {1, ctx->my, 1};
+        size_t count[3] = {1, ctx.my, 1};
         file_read_array_double (
             ncfile.id, fieldnames[CORIOLIS], start, count,
-            ctx->Coriolis_parameter);
+            ctx.Coriolis_parameter);
     }
 
     /* Grid spacings */
-    file_read_attribute (ncfile.id, "DX", &ctx->hx);
-    file_read_attribute (ncfile.id, "DY", &ctx->hy);
-    ctx->hz = ctx->Pressure[1] - ctx->Pressure[0]; /* hz is negative!!! */
+    file_read_attribute (ncfile.id, "DX", &ctx.hx);
+    file_read_attribute (ncfile.id, "DY", &ctx.hy);
+    ctx.hz = ctx.Pressure[1] - ctx.Pressure[0]; /* hz is negative!!! */
 
-    file_read_int_attribute (ncfile.id, "CU_PHYSICS", &ctx->cu_physics);
+    file_read_int_attribute (ncfile.id, "CU_PHYSICS", &ctx.cu_physics);
 
-    return (0);
+    ctx.first = max_of_size_t (0, options.first);
+    ctx.last  = min_of_size_t (options.last, ctx.mt - 1);
+
+    return ctx;
 }
 
 static int temperature (
@@ -575,7 +573,7 @@ int context_destroy (Context *ctx) {
 }
 */
 
-int context_update (
+void update_context (
     NCFile ncfile, const size_t step, const size_t first, const size_t last,
     Context *ctx) {
 
@@ -622,7 +620,8 @@ int context_update (
     friction (ctx, ncfile.id, step, mu_inv);
 
     if (step == last) {
-        PetscPrintf(PETSC_COMM_WORLD, "FIX: context_update fails to free vectors\n");
+        PetscPrintf (
+            PETSC_COMM_WORLD, "FIX: context_update fails to free vectors\n");
         /*
         VecDestroy (&Tnext);
         VecDestroy (&Vnext);
@@ -630,12 +629,9 @@ int context_update (
         DMRestoreGlobalVector (daxy, &mu_inv);
         */
     }
-
-    return (0);
 }
 
-int context_destroy (Context *ctx) {
-
+void free_context (Context *ctx) {
     PetscFree (ctx->Pressure);
     PetscFree (ctx->Coriolis_parameter);
 
@@ -652,8 +648,6 @@ int context_destroy (Context *ctx) {
     VecDestroy (&ctx->Horizontal_wind);
     VecDestroy (&ctx->Friction);
 
-    //        ierr = KSPDestroy(&ctx->ksp);CHKERRQ(ierr);
+    KSPDestroy (&ctx->ksp);
     DMDestroy (&ctx->da);
-
-    return (0);
 }
