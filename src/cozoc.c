@@ -9,13 +9,13 @@
 static char help[] = BANNER
     "Solves quasi-geostrophic and generalized omega equations.\n"
     "\n"
-    "Usage: mpiexec [-n procs] ozoc [-f <fname>] [-h|-Q|-G|-Z]\n"
-    "               [-s <n>] [-n <n>]\n"
+    "Usage: mpiexec [-n procs] cozoc [-f <fname>] [-h|-Q|-G]\n"
+    "               [-r <s0>,<s1>]\n"
     "\n"
     "Input file:\n"
     "  -f <fname>    Input file, NetCDF4/HDF5 format, from WRF simulation\n"
     "Which time steps to process:\n"
-    "  -r <s1>,<s2>  Range of steps to compute, counting from zero\n"
+    "  -r <s0>,<s1>  Range of steps to compute, counting from zero\n"
     "Mode:\n"
     "  -Q            Disable quasi-geostrophic omega eq calculation\n"
     "  -G            Disable generalized omega eqs calculations\n\n";
