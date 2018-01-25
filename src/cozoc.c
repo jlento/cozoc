@@ -3,14 +3,12 @@
 #include "equation.h"
 #include "io.h"
 #include "options.h"
-#include <petscdmda.h>
-#include <petscksp.h>
+#include <petscsys.h>
 
 static char help[] = BANNER
     "Solves quasi-geostrophic and generalized omega equations.\n"
     "\n"
-    "Usage: mpiexec [-n procs] cozoc [-f <fname>] [-h|-Q|-G]\n"
-    "               [-r <s0>,<s1>]\n"
+    "Usage: [mpiexec -n procs] cozoc [-f <fname>] [-h|-Q|-G] [-r <s0>,<s1>]\n"
     "\n"
     "Input file:\n"
     "  -f <fname>    Input file, NetCDF4/HDF5 format, from WRF simulation\n"
@@ -36,15 +34,10 @@ int main (int argc, char *argv[]) {
         ncfile.name, 0, ctx.mt - 1, ctx.first, ctx.last);
 
     for (size_t istep = ctx.first; istep < ctx.last + 1; istep++) {
-
         info ("Step: %d\n", istep);
-
         update_context (ncfile, istep, ctx.first, ctx.last, &ctx);
-
         for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
-
             Vec x = solution (eqs, ieq, ctx);
-
             write3D (ncfile.id, istep, eqs.id_string[ieq], x);
         }
     }
