@@ -34,9 +34,12 @@ int main (int argc, char *argv[]) {
         ncfile.name, 0, ctx.mt - 1, ctx.first, ctx.last);
 
     for (size_t istep = ctx.first; istep < ctx.last + 1; istep++) {
+
         info ("Step: %d\n", istep);
         update_context (istep, ncfile, &ctx);
+
         for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
+
             Vec x = solution (eqs.L[ieq], eqs.a[ieq], ctx);
             write3D (ncfile.id, istep, eqs.id_string[ieq], x);
         }
