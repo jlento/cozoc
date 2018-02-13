@@ -6,12 +6,26 @@
 #include <petscdmda.h>
 #include <petscerror.h>
 #include <petscsys.h>
+#include <stdbool.h>
 #include <strings.h>
-#include <unistd.h>
+
+static bool file_exists (const char *filename) {
+    FILE *fp = fopen (filename, "r");
+    if (fp != 0) {
+        fclose (fp);
+        return true;
+    } else {
+        return false;
+    };
+}
+
+static void report_variable () {
+
+}
 
 static int io_nc_open_par (char const fname[PETSC_MAX_PATH_LEN]) {
     int ncid = -1;
-    if (access (fname, F_OK) != -1) {
+    if (file_exists (fname)) {
         ERR (
             nc_open_par (
                 fname, NC_MPIIO | NC_NETCDF4 | NC_WRITE, PETSC_COMM_WORLD,
@@ -34,6 +48,7 @@ static GRIDTYPE get_grid_type (Options const options, int const ncid) {
 
 NCFile new_file (Options options) {
     NCFile ncfile;
+    int status = 0;
     strcpy (ncfile.name, options.fname);
     ncfile.id        = io_nc_open_par (options.fname);
     ncfile.file_type = get_nc_file_type (options, ncfile.id);
@@ -51,12 +66,13 @@ NCFile new_file (Options options) {
 
     file_redef (ncfile.id);
 
-    if (options.compute_omega_quasi_geostrophic)
-        file_def_var (ncfile.id, OMEGA_QG_ID_STRING);
+    if (options.compute_omega_quasi_geostrophic) {
+        status = file_def_var (ncfile.id, OMEGA_QG_ID_STRING);
+    }
 
     if (options.compute_omega_generalized) {
         for (int i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++)
-            file_def_var (ncfile.id, omega_component_id_string[i]);
+            status = file_def_var (ncfile.id, omega_component_id_string[i]);
     }
 
     file_enddef (ncfile.id);
@@ -69,7 +85,7 @@ const char *dimnames[NDIMS] = {"time", "vlevs", "south_north", "west_east"};
 const char *fieldnames[NFIELDS] = {"XTIME", "LEV", "F"};
 
 PetscErrorCode file_open (const char *wrfin, int *ncid) {
-    if (access (wrfin, F_OK) != -1) {
+    if (file_exists (wrfin)) {
         ERR (
             nc_open_par (
                 wrfin, NC_MPIIO | NC_NETCDF4 | NC_WRITE, PETSC_COMM_WORLD,
@@ -82,12 +98,10 @@ PetscErrorCode file_open (const char *wrfin, int *ncid) {
     }
 }
 
-void close_file (NCFile ncfile) {
-    nc_close (ncfile.id);
-}
+void close_file (NCFile ncfile) { nc_close (ncfile.id); }
 
 PetscInt file_get_dimsize (const int ncid, const char *dimname) {
-    int dimid;
+    int    dimid;
     size_t dimsize;
     ERR (nc_inq_dimid (ncid, dimname, &dimid));
     ERR (nc_inq_dimlen (ncid, dimid, &dimsize));
@@ -228,3 +242,16 @@ int write3Ddump (const char *varname, size_t mx, size_t my, size_t mz, Vec v) {
     nc_close (ncid);
     return (0);
 }
+
+/*
+void write_fields (
+    char const filename[], FIELD const select[], size_t const n,
+    Field const fields[]) {
+    if (file_exists (filename)) {
+
+    } else {
+    }
+    for (size_t i = 0; i < n; i++) {
+    }
+}
+*/

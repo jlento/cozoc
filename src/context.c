@@ -52,11 +52,17 @@ Context new_context (Options const options, NCFile const ncfile) {
     VecDuplicate (ctx.Temperature, &ctx.Temperature_tendency);
     VecDuplicate (ctx.Temperature, &ctx.Vorticity_tendency);
 
+    VecDuplicate (ctx.Temperature, &ctx.diab);
+    VecDuplicate (ctx.Temperature, &ctx.rthcuten);
+    VecDuplicate (ctx.Temperature, &ctx.rthraten);
+    VecDuplicate (ctx.Temperature, &ctx.rthblten);
+
     DMCreateGlobalVector (ctx.da2, &ctx.Horizontal_wind);
     VecDuplicate (ctx.Horizontal_wind, &ctx.Friction);
 
-    /* These are read here because they are constants throughout the
-     * calculation */
+
+        /* These are read here because they are constants throughout the
+         * calculation */
 
     /* Time coordinate */
     {
@@ -100,6 +106,13 @@ Context new_context (Options const options, NCFile const ncfile) {
 
     return ctx;
 }
+
+Vec new_vec (Context *ctx) {
+    Vec vec;
+    DMCreateGlobalVector (ctx->da, &vec);
+    return vec;
+}
+
 
 static int temperature (
     int ncid, size_t step, size_t first, size_t mt, double *t, Vec *T,
@@ -611,8 +624,8 @@ void update_context (size_t step, NCFile ncfile, Context *ctx) {
     temperature (ncfile.id, step, ctx->first, mt, time, T, Ttend, &Tnext);
     sigma_parameter (da, mz, p, *T, sigma);
     horizontal_wind_and_vorticity_and_vorticity_tendency (
-        ncfile.id, step, ctx->first, mt, time, da, da2, my, hx, hy, V, &Vnext, zeta,
-        zetatend, &zetanext);
+        ncfile.id, step, ctx->first, mt, time, da, da2, my, hx, hy, V, &Vnext,
+        zeta, zetatend, &zetanext);
     one_over_dry_air_mass_column (mu_inv, ncfile.id, step, ctx);
     diabatic_heating (ctx, ncfile.id, step, mu_inv);
     friction (ctx, ncfile.id, step, mu_inv);

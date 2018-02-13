@@ -1,8 +1,8 @@
 #pragma once
 
-#include "io.h"
 #include "omega.h"
 #include "options.h"
+#include "io.h"
 #include <petscksp.h>
 
 typedef struct Context Context;
@@ -28,10 +28,16 @@ struct Context {
     Vec          Temperature_tendency;
     Vec          Vorticity_tendency;
     Vec          omega[NUM_GENERALIZED_OMEGA_COMPONENTS];
+    Vec          diab;
+    Vec          rthcuten;
+    Vec          rthraten;
+    Vec          rthblten;
 };
 
 Context new_context (Options, NCFile);
 
+Vec new_vec(Context*);
+
 void free_context (Context *ctx);
 
-void update_context (size_t, NCFile, Context*);
+void update_context (size_t, NCFile, Context *);

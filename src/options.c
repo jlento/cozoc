@@ -1,18 +1,19 @@
 #include "options.h"
 #include "abortonerror.h"
-#include <petscoptions.h>
+#include "fields.h"
 #include <limits.h>
+#include <petscoptions.h>
 
 #define MAXLEN 256
 
-Options new_options ( void ) {
+Options new_options (void) {
 
-    Options options = {.fname = "wrf.nc4",
-                       .first = 0,
-                       .last = SIZE_MAX,
+    Options options = {.fname                           = "wrf.nc4",
+                       .first                           = 0,
+                       .last                            = SIZE_MAX,
                        .compute_omega_quasi_geostrophic = PETSC_TRUE,
-                       .compute_omega_generalized = PETSC_TRUE};
-    char s[MAXLEN] = "";
+                       .compute_omega_generalized       = PETSC_TRUE};
+    char s[MAXLEN]                                      = "";
 
     PetscOptionsBegin (PETSC_COMM_WORLD, "", "Options for COZOC", "none");
 
@@ -40,6 +41,8 @@ Options new_options ( void ) {
             &options.compute_omega_generalized, 0));
 
     PetscOptionsEnd ();
+
+    //push (FIELD_DIABATIC_HEATING, options.goals);
 
     return options;
 }

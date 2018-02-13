@@ -1,6 +1,7 @@
 #include "context.h"
 #include "defs.h"
 #include "equation.h"
+#include "fields.h"
 #include "io.h"
 #include "options.h"
 #include <petscsys.h>
@@ -24,28 +25,39 @@ int main (int argc, char *argv[]) {
 
     const Options   options = new_options ();
     const NCFile    ncfile  = new_file (options);
+    Fields          fields  = new_fields (options, ncfile);
     const Equations eqs     = new_equations (options, ncfile);
-    Context         ctx     = new_context (options, ncfile);
 
     info (
         BANNER "Input file      : %s\n"
                "Steps in file   : %zu-%zu\n"
                "Computing steps : %zu-%zu\n\n",
-        ncfile.name, 0, ctx.mt - 1, ctx.first, ctx.last);
+        ncfile.name, 0, fields.ctx.mt - 1, fields.ctx.first, fields.ctx.last);
 
-    for (size_t istep = ctx.first; istep < ctx.last + 1; istep++) {
+    draw_tree (fields, "fields.dot");
+
+    Node *todo = 0;
+    while (more_todo (fields, &todo)) {
+        print_field_list ("todo", todo, fields);
+        Node *head = pop (&todo);
+        update (head->this, &fields);
+        free (head);
+    }
+
+    for (size_t istep = fields.ctx.first; istep < fields.ctx.last + 1;
+         istep++) {
 
         info ("Step: %d\n", istep);
-        update_context (istep, ncfile, &ctx);
+        update_context (istep, ncfile, &fields.ctx);
 
         for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
 
-            Vec x = solution (eqs.L[ieq], eqs.a[ieq], ctx);
+            Vec x = solution (eqs.L[ieq], eqs.a[ieq], fields.ctx);
             write3D (ncfile.id, istep, eqs.id_string[ieq], x);
         }
     }
 
-    free_context (&ctx);
+    free_context (&fields.ctx);
     close_file (ncfile);
     PetscFinalize ();
     return 0;

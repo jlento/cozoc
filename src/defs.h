@@ -11,7 +11,7 @@
     " \\___/____\\___/ \n"                                                     \
     "                \n"
 
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0])
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define ERROR(msg) SETERRQ (PETSC_COMM_WORLD, 1, msg)
 #define info(...) PetscPrintf (PETSC_COMM_WORLD, __VA_ARGS__)
 
