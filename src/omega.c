@@ -1,3 +1,4 @@
+#include "defs.h"
 #include "constants.h"
 #include "context.h"
 #include "omega.h"
@@ -66,6 +67,8 @@ extern PetscErrorCode omega_compute_operator (
     DMDAVecGetArrayDOFRead (da2, Vvec, &V);
 
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
+
+    info("In omega_compute_operator()\n");
 
     for (int k = zs; k < zs + zm; k++) {
         for (int j = ys; j < ys + ym; j++) {
