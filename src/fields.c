@@ -109,6 +109,14 @@ Node *pop (Node **head) {
     return node;
 }
 
+Node *_new_list (const size_t n, const FIELD f[]) {
+    Node *p = 0;
+    for (size_t i = 0; i < n; i++) {
+        p = push (f[i], p);
+    }
+    return p;
+}
+
 void draw_tree (Fields fields, const char *fname) {
     FILE *fd = fopen (fname, "w");
     PetscPrintf (
@@ -174,7 +182,7 @@ void print_field_list (const char *title, Node *head, Fields fields) {
             fields.field[head->this].step + 1, (head->next ? ", " : ""));
         head = head->next;
     }
-    PetscPrintf (PETSC_COMM_WORLD, "\n\n");
+    PetscPrintf (PETSC_COMM_WORLD, "\n");
 }
 
 void update (FIELD id, Fields *fields) {

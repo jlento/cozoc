@@ -26,9 +26,9 @@ struct Field {
     size_t        step;
     int           ncid_in;
     int           ncid_out;
-    char          name[NC_MAX_NAME + 1];
-    char *        description;
-    char *        units;
+    const char    name[NC_MAX_NAME + 1];
+    const char *  description;
+    const char *  units;
     Vec           vec;
     Node *        parents;
     Node *        children;
@@ -46,7 +46,7 @@ struct Node {
 };
 
 Fields new_fields (Options, NCFile);
-Node *more_todo (Fields, Node **);
+Node * more_todo (Fields, Node **);
 
 Node *push (FIELD, Node *);
 Node *pop (Node **);
@@ -54,6 +54,14 @@ void  for_all (Node *, void (*callback) (FIELD));
 void  draw_tree (Fields, const char *);
 void print_field_list (const char *title, Node *head, Fields fields);
 
+#define new_list(...)                                                          \
+    _new_list (                                                                \
+        sizeof ((FIELD[]){__VA_ARGS__}) / sizeof (FIELD),                      \
+        (FIELD[]){__VA_ARGS__})
+
+Node *_new_list (const size_t, const FIELD[]);
+
+/*
 #define new_list(...)                                                          \
     ({                                                                         \
         Node * p       = 0;                                                    \
@@ -64,5 +72,6 @@ void print_field_list (const char *title, Node *head, Fields fields);
         }                                                                      \
         p;                                                                     \
     })
+*/
 
 void update (FIELD, Fields *);
