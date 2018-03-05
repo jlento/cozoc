@@ -52,7 +52,9 @@ values."
      ;;        shell-default-height 30
      ;;        shell-default-position 'bottom)
      spell-checking
-     (syntax-checking :variables flycheck-clang-language-standard c11)
+     (syntax-checking :variables
+                      flycheck-clang-language-standard "c11"
+                      flycheck-clang-warnings '("all" "extra" "no-pragma-once-outside-header"))
      ;; version-control
      )
    ;; List of additional packages that will be installed without being
