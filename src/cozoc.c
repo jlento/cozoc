@@ -1,9 +1,10 @@
 #include "context.h"
 #include "defs.h"
 #include "equation.h"
-#include "fields.h"
 #include "io.h"
 #include "options.h"
+#include "rules.h"
+#include "targets.h"
 #include <petscsys.h>
 
 static char help[] = BANNER
@@ -23,41 +24,45 @@ int main (int argc, char *argv[]) {
 
     PetscInitialize (&argc, &argv, 0, help);
 
-    const Options   options = new_options ();
-    const NCFile    ncfile  = new_file (options);
-    Fields          fields  = new_fields (options, ncfile);
-    const Equations eqs     = new_equations (options, ncfile);
+    let options = new_options ();
+    let ncfile  = new_file (options);
+    let rules   = new_rules ();
+    var targets = new_targets (options, ncfile);
+
+    //const Equations eqs = new_equations (options, ncfile);
 
     info (
         BANNER "Input file      : %s\n"
                "Steps in file   : %zu-%zu\n"
                "Computing steps : %zu-%zu\n\n",
-        ncfile.name, 0, fields.ctx.mt - 1, fields.ctx.first, fields.ctx.last);
+        ncfile.name, 0, targets.context.mt - 1, targets.context.first, targets.context.last);
 
-    draw_tree (fields, "fields.dot");
+    draw (&rules, &targets, "deps.dot");
+    run (&rules, &targets);
 
+    /*
     Node *todo = 0;
-    while (more_todo (fields, &todo)) {
-        print_field_list ("todo", todo, fields);
+    while (more_todo (rules, &todo)) {
+        print_rule_list ("todo", todo, rules);
         Node *head = pop (&todo);
-        update (head->this, &fields);
+        update (head->this, &rules);
         free (head);
     }
+    */
 
-    for (size_t istep = fields.ctx.first; istep < fields.ctx.last + 1;
-         istep++) {
+    /*
+    for (size_t istep = rules.ctx.first; istep < rules.ctx.last + 1; istep++) {
 
         info ("Step: %d\n", istep);
-        update_context (istep, ncfile, &fields.ctx);
+        update_context (istep, ncfile, rules.ctx);
 
         for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
 
-            Vec x = solution (eqs.L[ieq], eqs.a[ieq], fields.ctx);
+            Vec x = solution (eqs.L[ieq], eqs.a[ieq], rules.ctx);
             write3D (ncfile.id, istep, eqs.id_string[ieq], x);
         }
     }
-
-    free_context (&fields.ctx);
+    */
     close_file (ncfile);
     PetscFinalize ();
     return 0;
