@@ -29,7 +29,7 @@ int main (int argc, char *argv[]) {
     let rules   = new_rules ();
     var targets = new_targets (options, ncfile);
 
-    //const Equations eqs = new_equations (options, ncfile);
+    const Equations eqs = new_equations (options, ncfile);
 
     info (
         BANNER "Input file      : %s\n"
@@ -40,29 +40,19 @@ int main (int argc, char *argv[]) {
     draw (&rules, &targets, "deps.dot");
     run (&rules, &targets);
 
-    /*
-    Node *todo = 0;
-    while (more_todo (rules, &todo)) {
-        print_rule_list ("todo", todo, rules);
-        Node *head = pop (&todo);
-        update (head->this, &rules);
-        free (head);
-    }
-    */
-
-    /*
-    for (size_t istep = rules.ctx.first; istep < rules.ctx.last + 1; istep++) {
+    // Old main loop to be replaced by the above run()
+    for (size_t istep = targets.context.first; istep < targets.context.last + 1; istep++) {
 
         info ("Step: %d\n", istep);
-        update_context (istep, ncfile, rules.ctx);
+        update_context (istep, ncfile, &targets.context);
 
         for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
 
-            Vec x = solution (eqs.L[ieq], eqs.a[ieq], rules.ctx);
+            Vec x = solution (eqs.L[ieq], eqs.a[ieq], targets.context);
             write3D (ncfile.id, istep, eqs.id_string[ieq], x);
         }
     }
-    */
+
     close_file (ncfile);
     PetscFinalize ();
     return 0;
