@@ -7,7 +7,7 @@
 #include "targets.h"
 #include <petscsys.h>
 
-static char help[] = BANNER
+let static help = BANNER
     "Solves quasi-geostrophic and generalized omega equations.\n"
     "\n"
     "Usage: [mpiexec -n procs] cozoc [-f <fname>] [-h|-Q|-G] [-r <s0>,<s1>]\n"

@@ -2,30 +2,12 @@
 
 #include "grids.h"
 #include "netcdf.h"
-#include "petscdm.h"
 #include "options.h"
+#include "petscdm.h"
 
-typedef enum NCFILETYPE { NCFILETYPE_WRF } NCFILETYPE;
 #define NUM_NCFILETYPE 1
-
-typedef enum DIM { DIM_T, DIM_Z, DIM_Y, DIM_X } DIM;
 #define NUM_DIM 4
-
 #define DIMNAME_WRF "time", "vlevs", "south_north", "west_east"
-
-
-
-
-
-
-
-enum dimensions { TIME, ZDIM, YDIM, XDIM, NDIMS };
-
-extern const char *dimnames[NDIMS];
-
-enum fields { TIME_COORDINATE, Z_COORDINATE, CORIOLIS, NFIELDS };
-extern const char *fieldnames[NFIELDS];
-
 /* NetCDF error handler */
 #define ERRCODE 2
 #define ERR(e)                                                                 \
@@ -36,20 +18,36 @@ extern const char *fieldnames[NFIELDS];
         exit (ERRCODE);                                                        \
     }
 
+typedef enum NCFILETYPE {
+    NCFILETYPE_WRF
+} NCFILETYPE;
+
+typedef enum DIM { DIM_T, DIM_Z, DIM_Y, DIM_X } DIM;
+
+enum dimensions { TIME, ZDIM, YDIM, XDIM, NDIMS };
+
 typedef struct NCFile NCFile;
 struct NCFile {
-    char name[PETSC_MAX_PATH_LEN];
-    int id;
+    char       name[PETSC_MAX_PATH_LEN];
+    int        id;
     NCFILETYPE file_type;
-    GRIDTYPE grid_type;
-    char dimname[NUM_DIM][NC_MAX_NAME + 1];
+    GRIDTYPE   grid_type;
+    char       dimname[NUM_DIM][NC_MAX_NAME + 1];
 };
 
+struct Files {
+    NCFile in;
+    NCFile out;
+};
+
+
+extern const char *dimnames[NDIMS];
+
+enum fields { TIME_COORDINATE, Z_COORDINATE, CORIOLIS, NFIELDS };
+extern const char *fieldnames[NFIELDS];
+
 NCFile new_file (Options);
-void close_file (const NCFile);
-
-
-
+void   close_file (const NCFile);
 
 int file_open (const char *wrfin, int *ncid);
 int file_redef (const int ncid);
