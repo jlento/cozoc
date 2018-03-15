@@ -4,26 +4,28 @@
 #include "operators.h"
 
 #define NUM_TARGET_TYPE 2
-#define NUM_TARGET 10
+#define NUM_TARGET 12
 
-#define new_target_list(...)                                                \
-    _new_target_list (                                                             \
+#define new_target_list(...)                                                   \
+    _new_target_list (                                                         \
         sizeof ((TARGET[]){__VA_ARGS__}) / sizeof (TARGET),                    \
         (TARGET[]){__VA_ARGS__})
 
 enum TARGET_TYPE { TARGET_TYPE_FIELD, TARGET_TYPE_OPERATOR };
 
 enum TARGET {
-    TARGET_FIELD_DIABATIC_HEATING,        // Context
-    TARGET_FIELD_H_DIABATIC,              // Input
-    TARGET_FIELD_OMEGA_Q,                 // Result
-    TARGET_FIELD_RTHBLTEN,                // Input
-    TARGET_FIELD_RTHCUTEN,                // Input
-    TARGET_FIELD_RTHRATEN,                // Input
-    TARGET_FIELD_TEMPERATURE,             // Input
-    TARGET_FIELD_WIND_U,                  // Input
-    TARGET_FIELD_WIND_V,                  // Input
-    TARGET_OPERATOR_GENERALIZED_OMEGA,    // Context
+    TARGET_FIELD_DIABATIC_HEATING,
+    TARGET_FIELD_FRICTION,
+    TARGET_FIELD_GEOPOTENTIAL_HEIGHT,
+    TARGET_FIELD_HORIZONTAL_WIND,
+    TARGET_FIELD_OMEGA_Q,
+    TARGET_FIELD_MU_INV,
+    TARGET_FIELD_TEMPERATURE,
+    TARGET_FIELD_TEMPERATURE_TENDENCY,
+    TARGET_FIELD_SIGMA_PARAMETER,
+    TARGET_FIELD_SURFACE_PRESSURE,
+    TARGET_FIELD_VORTICITY,
+    TARGET_FIELD_VORTICITY_TENDENCY
 };
 
 typedef enum TARGET_TYPE TARGET_TYPE;
@@ -37,12 +39,11 @@ struct Target {
     union {
         Field field;
         Operator operator;
-    } target;
+    };
     size_t time;
 };
 
 struct Targets {
-    Context context;
     Target target[NUM_TARGET];
 };
 
@@ -51,7 +52,7 @@ struct TARGETS {
     TARGETS *next;
 };
 
-Targets new_targets (Options options, NCFile ncfile);
+Targets new_targets (Options options, NCFile ncfile, Context *);
 TARGETS *push (TARGET target, TARGETS *oldhead);
 TARGETS *pop (TARGETS **head);
 TARGETS *_new_target_list (const size_t, const TARGET[]);

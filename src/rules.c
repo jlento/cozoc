@@ -5,46 +5,57 @@
 #include "targets.h"
 #include <stdbool.h>
 
+static void compute_diabatic_heating (TARGET, Targets *, Context *);
+
 Rules new_rules (void) {
     Rules rules = {{
+            [TARGET_FIELD_DIABATIC_HEATING] =
+                (Rule){.prerequisites = new_target_list (TARGET_FIELD_MU_INV),
+                       .recipe        = compute_diabatic_heating},
 
-        (Rule){.target        = TARGET_FIELD_DIABATIC_HEATING,
-               .prerequisites = new_target_list (
-                   TARGET_FIELD_H_DIABATIC, TARGET_FIELD_RTHCUTEN,
-                   TARGET_FIELD_RTHRATEN, TARGET_FIELD_RTHBLTEN),
-               .recipe = 0},
+            [TARGET_FIELD_FRICTION] =
+                (Rule){.prerequisites = new_target_list (TARGET_FIELD_MU_INV),
+                       .recipe        = 0},
 
-        (Rule){
-            .target = TARGET_FIELD_H_DIABATIC, .prerequisites = 0, .recipe = 0},
+            [TARGET_FIELD_GEOPOTENTIAL_HEIGHT] =
+                (Rule){.prerequisites = 0, .recipe = 0},
 
-        (Rule){.target        = TARGET_FIELD_OMEGA_Q,
-               .prerequisites = new_target_list (
-                   TARGET_OPERATOR_GENERALIZED_OMEGA,
-                   TARGET_FIELD_DIABATIC_HEATING),
-               .recipe = 0},
+            [TARGET_FIELD_HORIZONTAL_WIND] =
+                (Rule){.prerequisites = 0, .recipe = 0},
 
-        (Rule){
-            .target = TARGET_FIELD_RTHBLTEN, .prerequisites = 0, .recipe = 0},
+            [TARGET_FIELD_OMEGA_Q] = (Rule){.prerequisites = new_target_list (
+                                                TARGET_FIELD_DIABATIC_HEATING,
+                                                TARGET_FIELD_HORIZONTAL_WIND,
+                                                TARGET_FIELD_SIGMA_PARAMETER,
+                                                TARGET_FIELD_VORTICITY),
+                                            .recipe = 0},
 
-        (Rule){
-            .target = TARGET_FIELD_RTHCUTEN, .prerequisites = 0, .recipe = 0},
+            [TARGET_FIELD_MU_INV] = (Rule){.prerequisites = 0, .recipe = 0},
 
-        (Rule){
-            .target = TARGET_FIELD_RTHRATEN, .prerequisites = 0, .recipe = 0},
+            [TARGET_FIELD_TEMPERATURE] =
+                (Rule){.prerequisites = 0, .recipe = 0},
 
-        (Rule){.target        = TARGET_FIELD_TEMPERATURE,
-               .prerequisites = 0,
-               .recipe        = 0},
+            [TARGET_FIELD_TEMPERATURE_TENDENCY] =
+                (Rule){.prerequisites =
+                           new_target_list (TARGET_FIELD_TEMPERATURE),
+                       .recipe = 0},
 
-        (Rule){.target = TARGET_FIELD_WIND_U, .prerequisites = 0, .recipe = 0},
+            [TARGET_FIELD_SIGMA_PARAMETER] =
+                (Rule){.prerequisites =
+                           new_target_list (TARGET_FIELD_TEMPERATURE),
+                       .recipe = 0},
 
-        (Rule){.target = TARGET_FIELD_WIND_V, .prerequisites = 0, .recipe = 0},
+            [TARGET_FIELD_SURFACE_PRESSURE] =
+                (Rule){.prerequisites = 0, .recipe = 0},
 
-        (Rule){.target        = TARGET_OPERATOR_GENERALIZED_OMEGA,
-               .prerequisites = new_target_list (
-                   TARGET_FIELD_TEMPERATURE, TARGET_FIELD_WIND_U,
-                   TARGET_FIELD_WIND_V),
-               .recipe = 0},
+            [TARGET_FIELD_VORTICITY] = (Rule){.prerequisites = new_target_list (
+                                                  TARGET_FIELD_HORIZONTAL_WIND),
+                                              .recipe = 0},
+
+            [TARGET_FIELD_VORTICITY_TENDENCY] =
+                (Rule){.prerequisites =
+                           new_target_list (TARGET_FIELD_HORIZONTAL_WIND),
+                       .recipe = 0},
 
     }};
 
@@ -54,10 +65,10 @@ Rules new_rules (void) {
 static char *target_name (TARGET id, const Targets *targets) {
     switch (targets->target[id].type) {
     case TARGET_TYPE_FIELD:
-        return (char *)&targets->target[id].target.field.name;
+        return (char *)&targets->target[id].field.name;
         break;
     case TARGET_TYPE_OPERATOR:
-        return (char *)&targets->target[id].target.operator.name ;
+        return (char *)&targets->target[id].operator.name ;
         break;
     default:
         info ("ERROR: Not implemented in target_name()");
@@ -92,7 +103,8 @@ void draw (const Rules *rules, const Targets *targets, const char *fname) {
  *   (3) the rule is not at the last time step (finished).
  */
 
-bool more_todo (const Rules *rules, Targets *targets, TARGETS **todo) {
+bool more_todo (
+    const Rules *rules, Targets *targets, TARGETS *todo[], Context *ctx) {
     bool eligible[NUM_TARGET];
     for (size_t i = 0; i < NUM_TARGET; i++) {
         eligible[i] = true;
@@ -110,7 +122,7 @@ bool more_todo (const Rules *rules, Targets *targets, TARGETS **todo) {
             }
             prereq = prereq->next;
         }
-        if (targets->target[i].time == targets->context.last) {    // (3)
+        if (targets->target[i].time == ctx->last) {    // (3)
             eligible[i] = false;
         }
     }
@@ -134,6 +146,29 @@ void print_target_list (
     info ("\n");
 }
 
+static void
+compute_diabatic_heating (TARGET id, Targets *targets, Context *ctx) {
+    diabatic_heating (
+        ctx, targets->target[id].field.ncid, targets->target[id].time);
+}
+
+static void
+read_target (TARGET id, size_t time, Targets *targets, Context *ctx) {
+    switch (targets->target[id].type) {
+    case TARGET_TYPE_FIELD: {
+        Field *f = &targets->target[id].field;
+        file_read_3d (f->ncid, time, f->name, f->vec);
+        break;
+    }
+    case TARGET_TYPE_OPERATOR: {
+        info ("Function read() is not implemented for TARGET_TYPE_OPERATOR.\n");
+        break;
+    }
+    default:
+        info ("Internal error in rules.c, function read().\n");
+    }
+}
+
 /*
 void recipe (RULE id, Rules *rules) {
     Rule *field = &rules->field[id];
@@ -145,24 +180,29 @@ void recipe (RULE id, Rules *rules) {
 }
 */
 
-void update (TARGET id, Targets *targets) {
+void update (TARGET id, const Rules *rules, Targets *targets, Context *ctx) {
     Target *target = &targets->target[id];
     target->time++;
-    /*
-    if (field->ncid_in)
-        read_field (id, fields);
-    if (field->update)
-        field->update (id, fields);
-    */
+    switch (target->type) {
+    case TARGET_TYPE_FIELD: {
+        if (rules->rule[id].recipe) {
+            rules->rule[id].recipe (id, targets, ctx);
+            info("Computing %s[%zu]\n", target->field.name, target->time);
+        }
+        break;
+    }
+    default:
+        info ("Update of TARGET_TYPE_OPERATOR not implemented yet.\n");
+    }
 }
 
-void run (const Rules *rules, Targets *targets) {
+void run (const Rules *rules, Targets *targets, Context *ctx) {
     TARGETS *todo = 0;
-    while ((more_todo (rules, targets, &todo))) {
+    while ((more_todo (rules, targets, &todo, ctx))) {
         while (todo) {
             print_target_list ("todo", todo, targets);
             TARGETS *head = pop (&todo);
-            update (head->this, targets);
+            update (head->this, rules, targets, ctx);
             free (head);
         }
     }

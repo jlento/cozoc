@@ -43,6 +43,7 @@ Context new_context (Options const options, NCFile const ncfile) {
     PetscMalloc1 (ctx.mt, &ctx.Time_coordinate);
 
     DMCreateGlobalVector (ctx.daxy, &ctx.Surface_pressure);
+    VecDuplicate (ctx.Surface_pressure, &ctx.One_over_dry_air_mass_column);
 
     DMCreateGlobalVector (ctx.da, &ctx.Temperature);
     VecDuplicate (ctx.Temperature, &ctx.Sigma_parameter);
@@ -52,17 +53,11 @@ Context new_context (Options const options, NCFile const ncfile) {
     VecDuplicate (ctx.Temperature, &ctx.Temperature_tendency);
     VecDuplicate (ctx.Temperature, &ctx.Vorticity_tendency);
 
-    VecDuplicate (ctx.Temperature, &ctx.diab);
-    VecDuplicate (ctx.Temperature, &ctx.rthcuten);
-    VecDuplicate (ctx.Temperature, &ctx.rthraten);
-    VecDuplicate (ctx.Temperature, &ctx.rthblten);
-
     DMCreateGlobalVector (ctx.da2, &ctx.Horizontal_wind);
     VecDuplicate (ctx.Horizontal_wind, &ctx.Friction);
 
-
-        /* These are read here because they are constants throughout the
-         * calculation */
+    /* These are read here because they are constants throughout the
+     * calculation */
 
     /* Time coordinate */
     {
@@ -112,7 +107,6 @@ Vec new_vec (Context *ctx) {
     DMCreateGlobalVector (ctx->da, &vec);
     return vec;
 }
-
 
 static int temperature (
     int ncid, size_t step, size_t first, size_t mt, double *t, Vec *T,
@@ -370,23 +364,22 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
     return (0);
 }
 
-static int one_over_dry_air_mass_column (
-    Vec mu_inv, const int ncid, const int step, Context *ctx) {
+static int
+one_over_dry_air_mass_column (const int ncid, const int step, Context *ctx) {
 
     DM  daxy = ctx->daxy;
     Vec tmp2d;
 
     DMGetGlobalVector (daxy, &tmp2d);
-    read2D (ncid, step, "MU", mu_inv);
+    read2D (ncid, step, "MU", ctx->One_over_dry_air_mass_column);
     read2D (ncid, step, "MUB", tmp2d);
-    VecAXPY (mu_inv, (PetscScalar)1.0, tmp2d);
-    VecReciprocal (mu_inv);
+    VecAXPY (ctx->One_over_dry_air_mass_column, (PetscScalar)1.0, tmp2d);
+    VecReciprocal (ctx->One_over_dry_air_mass_column);
     DMRestoreGlobalVector (ctx->da, &tmp2d);
     return (0);
 }
 
-static int
-diabatic_heating (Context *ctx, const int ncid, const int step, Vec mvec) {
+int diabatic_heating (Context *ctx, const int ncid, const int step) {
 
     DM            da         = ctx->da;
     DM            daxy       = ctx->daxy;
@@ -414,7 +407,7 @@ diabatic_heating (Context *ctx, const int ncid, const int step, Vec mvec) {
         printf ("Some sensible error here");
     }
 
-    DMDAVecGetArrayRead (daxy, mvec, &ma);
+    DMDAVecGetArrayRead (daxy, ctx->One_over_dry_air_mass_column, &ma);
     DMDAVecGetArray (da, Q, &qa);
 
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
@@ -427,7 +420,7 @@ diabatic_heating (Context *ctx, const int ncid, const int step, Vec mvec) {
     }
 
     DMDAVecRestoreArray (da, Q, &qa);
-    DMDAVecRestoreArrayRead (daxy, mvec, &ma);
+    DMDAVecRestoreArrayRead (daxy, ctx->One_over_dry_air_mass_column, &ma);
 
     file_read_3d (ncid, step, "H_DIABATIC", tmp3d);
     VecAXPY (Q, (PetscScalar)1.0, tmp3d);
@@ -450,7 +443,7 @@ diabatic_heating (Context *ctx, const int ncid, const int step, Vec mvec) {
     return (0);
 }
 
-static int friction (Context *ctx, const int ncid, const int step, Vec mvec) {
+static int friction (Context *ctx, const int ncid, const int step) {
 
     DM            da         = ctx->da;
     DM            da2        = ctx->da2;
@@ -479,7 +472,7 @@ static int friction (Context *ctx, const int ncid, const int step, Vec mvec) {
         printf ("Some sensible error here");
     }
 
-    DMDAVecGetArrayRead (daxy, mvec, &ma);
+    DMDAVecGetArrayRead (daxy, ctx->One_over_dry_air_mass_column, &ma);
     DMDAVecGetArrayDOF (da2, F, &fa);
 
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
@@ -494,7 +487,7 @@ static int friction (Context *ctx, const int ncid, const int step, Vec mvec) {
     }
 
     DMDAVecRestoreArrayDOF (da2, F, &fa);
-    DMDAVecRestoreArrayRead (daxy, mvec, &ma);
+    DMDAVecRestoreArrayRead (daxy, ctx->One_over_dry_air_mass_column, &ma);
 
     DMRestoreGlobalVector (da, &tmp3d);
 
@@ -590,7 +583,6 @@ void update_context (size_t step, NCFile ncfile, Context *ctx) {
 
     DM           da       = ctx->da;
     DM           da2      = ctx->da2;
-    DM           daxy     = ctx->daxy;
     size_t       my       = ctx->my;
     size_t       mz       = ctx->mz;
     size_t       mt       = ctx->mt;
@@ -610,13 +602,11 @@ void update_context (size_t step, NCFile ncfile, Context *ctx) {
     static Vec Tnext    = NULL;
     static Vec Vnext    = NULL;
     static Vec zetanext = NULL;
-    static Vec mu_inv   = NULL;
 
     if (step == ctx->first) {    // The first step
         VecDuplicate (*T, &Tnext);
         VecDuplicate (*V, &Vnext);
         VecDuplicate (*zeta, &zetanext);
-        DMGetGlobalVector (daxy, &mu_inv);
     }
 
     read2D (ncfile.id, step, "PSFC", psfc);
@@ -626,9 +616,9 @@ void update_context (size_t step, NCFile ncfile, Context *ctx) {
     horizontal_wind_and_vorticity_and_vorticity_tendency (
         ncfile.id, step, ctx->first, mt, time, da, da2, my, hx, hy, V, &Vnext,
         zeta, zetatend, &zetanext);
-    one_over_dry_air_mass_column (mu_inv, ncfile.id, step, ctx);
-    diabatic_heating (ctx, ncfile.id, step, mu_inv);
-    friction (ctx, ncfile.id, step, mu_inv);
+    one_over_dry_air_mass_column (ncfile.id, step, ctx);
+    diabatic_heating (ctx, ncfile.id, step);
+    friction (ctx, ncfile.id, step);
 
     if (step == ctx->last) {
         PetscPrintf (

@@ -42,7 +42,5 @@ Options new_options (void) {
 
     PetscOptionsEnd ();
 
-    //push (FIELD_DIABATIC_HEATING, options.goals);
-
     return options;
 }

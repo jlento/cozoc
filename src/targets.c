@@ -4,115 +4,125 @@
 #include "operators.h"
 #include "options.h"
 
-Targets new_targets (Options options, NCFile ncfile) {
+Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
     Targets targets = {
-        .context = new_context(options, ncfile),
         .target = {
 
                 [TARGET_FIELD_DIABATIC_HEATING] =
-                    (Target){.type         = TARGET_TYPE_FIELD,
-                             .target.field = (Field){.ncid_in     = 0,
-                                                     .ncid_out    = ncfile.id,
-                                                     .name        = "diab",
-                                                     .description = 0,
-                                                     .units       = 0,
-                                                     .vec         = 0},
+                    (Target){.type  = TARGET_TYPE_FIELD,
+                             .field = (Field){.ncid        = 0,
+                                              .name        = "Q",
+                                              .description = "Diabatic heating",
+                                              .units       = 0,
+                                              .vec = ctx->Diabatic_heating},
                              .time = options.first - 1},
 
-                [TARGET_FIELD_H_DIABATIC] =
-                    (Target){.type         = TARGET_TYPE_FIELD,
-                             .target.field = (Field){.ncid_in  = ncfile.id,
-                                                     .ncid_out = 0,
-                                                     .name     = "H_DIABATIC",
-                                                     .description = 0,
-                                                     .units       = 0,
-                                                     .vec         = 0},
+                [TARGET_FIELD_FRICTION] =
+                    (Target){.type  = TARGET_TYPE_FIELD,
+                             .field = (Field){.ncid        = 0,
+                                              .name        = "F",
+                                              .description = "Friction",
+                                              .units       = 0,
+                                              .vec         = ctx->Friction},
+                             .time = options.first - 1},
+
+                [TARGET_FIELD_GEOPOTENTIAL_HEIGHT] =
+                    (Target){.type = TARGET_TYPE_FIELD,
+                             .field =
+                                 (Field){.ncid        = 0,
+                                         .name        = "Z",
+                                         .description = "Geopotential height",
+                                         .units       = 0,
+                                         .vec = ctx->Geopotential_height},
+                             .time = options.first - 1},
+
+                [TARGET_FIELD_HORIZONTAL_WIND] =
+                    (Target){.type  = TARGET_TYPE_FIELD,
+                             .field = (Field){.ncid        = 0,
+                                              .name        = "V",
+                                              .description = "Horizontal wind",
+                                              .units       = 0,
+                                              .vec = ctx->Horizontal_wind},
                              .time = options.first - 1},
 
                 [TARGET_FIELD_OMEGA_Q] =
                     (Target){.type = TARGET_TYPE_FIELD,
-                             .target.field =
-                                 (Field){.ncid_in  = 0,
-                                         .ncid_out = ncfile.id,
-                                         .name     = "ome_q",
+                             .field =
+                                 (Field){.ncid = 0,
+                                         .name = "w_q",
                                          .description =
-                                             "omega due to diabatic heating",
+                                             "Omega due to diabatic heating",
                                          .units = "Pa s-1",
                                          .vec   = 0},
                              .time = options.first - 1},
 
-                [TARGET_FIELD_RTHBLTEN] =
-                    (Target){.type         = TARGET_TYPE_FIELD,
-                             .target.field = (Field){.ncid_in     = ncfile.id,
-                                                     .ncid_out    = 0,
-                                                     .name        = "RTHBLTEN",
-                                                     .description = 0,
-                                                     .units       = 0,
-                                                     .vec         = 0},
-                             .time = options.first - 1},
-
-                [TARGET_FIELD_RTHCUTEN] =
-                    (Target){.type         = TARGET_TYPE_FIELD,
-                             .target.field = (Field){.ncid_in     = ncfile.id,
-                                                     .ncid_out    = 0,
-                                                     .name        = "RTHCUTEN",
-                                                     .description = 0,
-                                                     .units       = 0,
-                                                     .vec         = 0},
-                             .time = options.first - 1},
-
-                [TARGET_FIELD_RTHRATEN] =
-                    (Target){.type         = TARGET_TYPE_FIELD,
-                             .target.field = (Field){.ncid_in     = ncfile.id,
-                                                     .ncid_out    = 0,
-                                                     .name        = "RTHRATEN",
-                                                     .description = 0,
-                                                     .units       = 0,
-                                                     .vec         = 0},
-                             .time = options.first - 1},
+                [TARGET_FIELD_MU_INV] =
+                    (Target){
+                        .type = TARGET_TYPE_FIELD,
+                        .field =
+                            (Field){.ncid = 0,
+                                    .name = "mu_inv",
+                                    .description =
+                                        "One over dry air mass column",
+                                    .units = 0,
+                                    .vec   = ctx->One_over_dry_air_mass_column},
+                        .time = options.first - 1},
 
                 [TARGET_FIELD_TEMPERATURE] =
+                    (Target){.type  = TARGET_TYPE_FIELD,
+                             .field = (Field){.ncid        = ncfile.id,
+                                              .name        = "TT",
+                                              .description = "Temperature",
+                                              .units       = "K",
+                                              .vec         = 0},
+                             .time = options.first - 1},
+
+                [TARGET_FIELD_TEMPERATURE_TENDENCY] =
                     (Target){.type = TARGET_TYPE_FIELD,
-                             .target.field =
-                                 (Field){.ncid_in     = ncfile.id,
-                                         .ncid_out    = 0,
-                                         .name        = "TT",
-                                         .description = "Temperature",
-                                         .units       = "K",
+                             .field =
+                                 (Field){.ncid        = ncfile.id,
+                                         .name        = "dT",
+                                         .description = "Temperature tendency",
+                                         .units       = "K -s",
                                          .vec         = 0},
                              .time = options.first - 1},
 
-                [TARGET_FIELD_WIND_U] =
+                [TARGET_FIELD_SIGMA_PARAMETER] =
+                    (Target){.type  = TARGET_TYPE_FIELD,
+                             .field = (Field){.ncid        = ncfile.id,
+                                              .name        = "sigma",
+                                              .description = "Sigma parameter",
+                                              .units       = "",
+                                              .vec = ctx->Sigma_parameter},
+                             .time = options.first - 1},
+
+                [TARGET_FIELD_SURFACE_PRESSURE] =
+                    (Target){.type  = TARGET_TYPE_FIELD,
+                             .field = (Field){.ncid        = ncfile.id,
+                                              .name        = "Psurf",
+                                              .description = "Surface pressure",
+                                              .units       = "",
+                                              .vec = ctx->Surface_pressure},
+                             .time = options.first - 1},
+
+                [TARGET_FIELD_VORTICITY] =
+                    (Target){.type  = TARGET_TYPE_FIELD,
+                             .field = (Field){.ncid        = ncfile.id,
+                                              .name        = "zeta",
+                                              .description = "Vorticity",
+                                              .units       = "",
+                                              .vec         = ctx->Vorticity},
+                             .time = options.first - 1},
+
+                [TARGET_FIELD_VORTICITY_TENDENCY] =
                     (Target){.type = TARGET_TYPE_FIELD,
-                             .target.field =
-                                 (Field){.ncid_in     = ncfile.id,
-                                         .ncid_out    = 0,
-                                         .name        = "UU",
-                                         .description = "x-wind component",
-                                         .units       = "m s-1",
-                                         .vec         = 0},
+                             .field =
+                                 (Field){.ncid        = ncfile.id,
+                                         .name        = "dzeta",
+                                         .description = "Vorticity tendency",
+                                         .units       = "",
+                                         .vec = ctx->Vorticity_tendency},
                              .time = options.first - 1},
-
-                [TARGET_FIELD_WIND_V] =
-                    (Target){.type = TARGET_TYPE_FIELD,
-                             .target.field =
-                                 (Field){.ncid_in     = ncfile.id,
-                                         .ncid_out    = 0,
-                                         .name        = "VV",
-                                         .description = "y-wind component",
-                                         .units       = "m s-1",
-                                         .vec         = 0},
-                             .time = options.first - 1},
-
-                [TARGET_OPERATOR_GENERALIZED_OMEGA] =
-                    (Target){.type           = TARGET_TYPE_OPERATOR,
-                             .target.operator= (Operator){
-                                 .name = "L",
-                                 .description =
-                                     "LHS operator of generalized omega eq.",
-                                 .mat = 0},
-                             .time = options.first - 1},
-
         }};
 
     return targets;

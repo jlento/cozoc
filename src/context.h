@@ -1,8 +1,8 @@
 #pragma once
 
+#include "io.h"
 #include "omega.h"
 #include "options.h"
-#include "io.h"
 #include <petscksp.h>
 
 typedef struct Context Context;
@@ -17,27 +17,26 @@ struct Context {
     double *     Time_coordinate;    // In seconds
     PetscScalar *Pressure;
     PetscScalar *Coriolis_parameter;
-    Vec          Surface_pressure;
-    Vec          Temperature;
-    Vec          Sigma_parameter;
-    Vec          Vorticity;
-    Vec          Geopotential_height;
     Vec          Diabatic_heating;
-    Vec          Horizontal_wind;
     Vec          Friction;
-    Vec          Temperature_tendency;
-    Vec          Vorticity_tendency;
+    Vec          Geopotential_height;
+    Vec          Horizontal_wind;
     Vec          omega[NUM_GENERALIZED_OMEGA_COMPONENTS];
-    Vec          diab;
-    Vec          rthcuten;
-    Vec          rthraten;
-    Vec          rthblten;
+    Vec          One_over_dry_air_mass_column;
+    Vec          Temperature;
+    Vec          Temperature_tendency;
+    Vec          Sigma_parameter;
+    Vec          Surface_pressure;
+    Vec          Vorticity;
+    Vec          Vorticity_tendency;
 };
 
 Context new_context (Options, NCFile);
 
-Vec new_vec(Context*);
+Vec new_vec (Context *);
 
 void free_context (Context *ctx);
 
 void update_context (size_t, NCFile, Context *);
+
+int diabatic_heating (Context *, const int, const int);

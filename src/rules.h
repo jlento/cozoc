@@ -7,9 +7,8 @@ typedef struct Rule  Rule;
 typedef struct Rules Rules;
 
 struct Rule {
-    TARGET  target;
     TARGETS *prerequisites;
-    void (*recipe) (Context *);
+    void (*recipe) (TARGET, Targets *, Context *);
 };
 
 struct Rules {
@@ -17,5 +16,5 @@ struct Rules {
 };
 
 Rules new_rules (void);
-void  run (const Rules*, Targets*);
-void  draw (const Rules*, const Targets*, const char *);
+void  run (const Rules *, Targets *, Context *);
+void  draw (const Rules *, const Targets *, const char *);

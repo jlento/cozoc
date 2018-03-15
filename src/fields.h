@@ -7,9 +7,16 @@
 #include <netcdf.h>
 #include <petscvec.h>
 
+enum FIELD_TYPE {
+    FIELD_TYPE_INPUT,
+    FIELD_TYPE_INTERMEDIATE,
+    FIELD_TYPE_OUTPUT
+};
+
+typedef enum FIELD_TYPE FIELD_TYPE;
+
 struct Field {
-    int         ncid_in;
-    int         ncid_out;
+    int         ncid;
     const char  name[NC_MAX_NAME + 1];
     const char *description;
     const char *units;
