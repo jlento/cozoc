@@ -14,7 +14,7 @@ Equations new_equations (Options const options, NCFile const ncfile) {
         strcpy (eqs.id_string[eqs.num_eq], OMEGA_QG_ID_STRING);
         eqs.num_eq++;
     }
-    if (options.compute_omega_quasi_geostrophic) {
+    if (options.compute_omega_generalized) {
         for (size_t i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++) {
             eqs.L[eqs.num_eq] = omega_compute_operator;
             eqs.a[eqs.num_eq] = omega_compute_rhs[i];

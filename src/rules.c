@@ -1,8 +1,11 @@
 #include "rules.h"
 #include "context.h"
 #include "fields.h"
+#include "omega.h"
 #include "operators.h"
 #include "targets.h"
+#include <petscerror.h>
+#include <petscksp.h>
 #include <stdbool.h>
 
 static void compute_diabatic_heating (TARGET, Targets *, Context *);
@@ -12,6 +15,7 @@ static void compute_one_over_dry_air_mass_column (TARGET, Targets *, Context *);
 static void compute_temperature_and_tendency (TARGET, Targets *, Context *);
 static void compute_sigma_parameter (TARGET, Targets *, Context *);
 static void read_field_2d (TARGET, Targets *, Context *);
+static void compute_omega_component (TARGET, Targets *, Context *);
 
 Rules new_rules (void) {
     Rules rules = {{
@@ -35,7 +39,7 @@ Rules new_rules (void) {
                                                 TARGET_FIELD_HORIZONTAL_WIND,
                                                 TARGET_FIELD_SIGMA_PARAMETER,
                                                 TARGET_FIELD_VORTICITY),
-                                            .recipe = 0},
+                                            .recipe = compute_omega_component},
 
             [TARGET_FIELD_MU_INV] =
                 (Rule){.prerequisites = 0,
@@ -167,6 +171,22 @@ static void compute_friction (TARGET id, Targets *targets, Context *ctx) {
 }
 
 static void
+compute_omega_component (TARGET id, Targets *targets, Context *ctx) {
+
+    KSPSetComputeOperators (ctx->ksp, omega_compute_operator, ctx);
+
+    switch (id) {
+    case TARGET_FIELD_OMEGA_Q: {
+        KSPSetComputeRHS (
+            ctx->ksp, omega_compute_rhs_F_Q, ctx);
+        KSPSolve (ctx->ksp, 0, 0);
+        KSPGetSolution (ctx->ksp, &ctx->omega[GENERALIZED_OMEGA_COMPONENT_Q]);
+    }
+    default: { info ("Not implemented in compute_omega_component.\n"); }
+    }
+}
+
+static void
 compute_horizontal_wind_etc (TARGET id, Targets *targets, Context *ctx) {
     static Vec Vnext    = NULL;
     static Vec zetanext = NULL;
@@ -222,20 +242,20 @@ static void compute_one_over_dry_air_mass_column (
     TARGET id, Targets *targets, Context *ctx) {
     one_over_dry_air_mass_column (
         targets->target[id].field.ncid, targets->target[id].time, ctx);
-};
+}
 
 static void
 compute_sigma_parameter (TARGET id, Targets *targets, Context *ctx) {
     sigma_parameter (
         ctx->da, ctx->mz, ctx->Pressure, ctx->Temperature,
         ctx->Sigma_parameter);
-};
+}
 
 static void read_field_2d (TARGET id, Targets *targets, Context *ctx) {
     read2D (
         targets->target[id].field.ncid, targets->target[id].time,
         targets->target[id].field.name, ctx->Surface_pressure);
-};
+}
 
 static void
 read_target (TARGET id, size_t time, Targets *targets, Context *ctx) {
@@ -271,8 +291,8 @@ void update (TARGET id, const Rules *rules, Targets *targets, Context *ctx) {
     switch (target->type) {
     case TARGET_TYPE_FIELD: {
         if (rules->rule[id].recipe) {
-            rules->rule[id].recipe (id, targets, ctx);
             info ("Computing %s[%zu]\n", target->field.name, target->time);
+            rules->rule[id].recipe (id, targets, ctx);
         }
         break;
     }
