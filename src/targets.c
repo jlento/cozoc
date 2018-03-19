@@ -46,15 +46,16 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
                              .time = options.first - 1},
 
                 [TARGET_FIELD_OMEGA_Q] =
-                    (Target){.type = TARGET_TYPE_FIELD,
-                             .field =
-                                 (Field){.ncid = 0,
-                                         .name = "w_q",
-                                         .description =
-                                             "Omega due to diabatic heating",
-                                         .units = "Pa s-1",
-                                         .vec   = 0},
-                             .time = options.first - 1},
+                    (Target){
+                        .type = TARGET_TYPE_FIELD,
+                        .field =
+                            (Field){
+                                .ncid        = 0,
+                                .name        = "w_q",
+                                .description = "Omega due to diabatic heating",
+                                .units       = "Pa s-1",
+                                .vec = ctx->omega[GENERALIZED_OMEGA_COMPONENT_Q]},
+                        .time = options.first - 1},
 
                 [TARGET_FIELD_MU_INV] =
                     (Target){
@@ -99,7 +100,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
                 [TARGET_FIELD_SURFACE_PRESSURE] =
                     (Target){.type  = TARGET_TYPE_FIELD,
                              .field = (Field){.ncid        = ncfile.id,
-                                              .name        = "Psurf",
+                                              .name        = "PSFC",
                                               .description = "Surface pressure",
                                               .units       = "",
                                               .vec = ctx->Surface_pressure},

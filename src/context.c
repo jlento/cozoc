@@ -108,7 +108,7 @@ Vec new_vec (Context *ctx) {
     return vec;
 }
 
-static int temperature (
+int temperature (
     int ncid, size_t step, size_t first, size_t mt, double *t, Vec *T,
     Vec *Ttend, Vec *Tnext) {
 
@@ -189,8 +189,8 @@ static int sigma_parameter (
 }
 */
 
-static int
-sigma_parameter (DM da, PetscInt mz, PetscScalar *p, Vec Tvec, Vec sigmavec) {
+int sigma_parameter (
+    DM da, PetscInt mz, PetscScalar *p, Vec Tvec, Vec sigmavec) {
     const double   R   = Specific_gas_constant_of_dry_air;
     const double   c_p = Specific_heat_of_dry_air;
     PetscInt       zs, ys, xs, zm, ym, xm;
@@ -311,7 +311,7 @@ static int horizontal_wind_and_vorticity (
     return (0);
 }
 
-static int horizontal_wind_and_vorticity_and_vorticity_tendency (
+int horizontal_wind_and_vorticity_and_vorticity_tendency (
     int ncid, size_t step, size_t first, size_t mt, double *t, DM da, DM da2,
     size_t my, PetscScalar hx, PetscScalar hy, Vec *V, Vec *Vnext, Vec *zeta,
     Vec *zetatend, Vec *zetanext) {
@@ -364,8 +364,8 @@ static int horizontal_wind_and_vorticity_and_vorticity_tendency (
     return (0);
 }
 
-static int
-one_over_dry_air_mass_column (const int ncid, const int step, Context *ctx) {
+int one_over_dry_air_mass_column (
+    const int ncid, const int step, Context *ctx) {
 
     DM  daxy = ctx->daxy;
     Vec tmp2d;
@@ -443,7 +443,7 @@ int diabatic_heating (Context *ctx, const int ncid, const int step) {
     return (0);
 }
 
-static int friction (Context *ctx, const int ncid, const int step) {
+int friction (Context *ctx, const int ncid, const int step) {
 
     DM            da         = ctx->da;
     DM            da2        = ctx->da2;

@@ -6,6 +6,12 @@
 #include <stdbool.h>
 
 static void compute_diabatic_heating (TARGET, Targets *, Context *);
+static void compute_friction (TARGET, Targets *, Context *);
+static void compute_horizontal_wind_etc (TARGET, Targets *, Context *);
+static void compute_one_over_dry_air_mass_column (TARGET, Targets *, Context *);
+static void compute_temperature_and_tendency (TARGET, Targets *, Context *);
+static void compute_sigma_parameter (TARGET, Targets *, Context *);
+static void read_field_2d (TARGET, Targets *, Context *);
 
 Rules new_rules (void) {
     Rules rules = {{
@@ -15,13 +21,14 @@ Rules new_rules (void) {
 
             [TARGET_FIELD_FRICTION] =
                 (Rule){.prerequisites = new_target_list (TARGET_FIELD_MU_INV),
-                       .recipe        = 0},
+                       .recipe        = compute_friction},
 
             [TARGET_FIELD_GEOPOTENTIAL_HEIGHT] =
                 (Rule){.prerequisites = 0, .recipe = 0},
 
             [TARGET_FIELD_HORIZONTAL_WIND] =
-                (Rule){.prerequisites = 0, .recipe = 0},
+                (Rule){.prerequisites = 0,
+                       .recipe        = compute_horizontal_wind_etc},
 
             [TARGET_FIELD_OMEGA_Q] = (Rule){.prerequisites = new_target_list (
                                                 TARGET_FIELD_DIABATIC_HEATING,
@@ -30,10 +37,13 @@ Rules new_rules (void) {
                                                 TARGET_FIELD_VORTICITY),
                                             .recipe = 0},
 
-            [TARGET_FIELD_MU_INV] = (Rule){.prerequisites = 0, .recipe = 0},
+            [TARGET_FIELD_MU_INV] =
+                (Rule){.prerequisites = 0,
+                       .recipe        = compute_one_over_dry_air_mass_column},
 
             [TARGET_FIELD_TEMPERATURE] =
-                (Rule){.prerequisites = 0, .recipe = 0},
+                (Rule){.prerequisites = 0,
+                       .recipe        = compute_temperature_and_tendency},
 
             [TARGET_FIELD_TEMPERATURE_TENDENCY] =
                 (Rule){.prerequisites =
@@ -43,10 +53,10 @@ Rules new_rules (void) {
             [TARGET_FIELD_SIGMA_PARAMETER] =
                 (Rule){.prerequisites =
                            new_target_list (TARGET_FIELD_TEMPERATURE),
-                       .recipe = 0},
+                       .recipe = compute_sigma_parameter},
 
             [TARGET_FIELD_SURFACE_PRESSURE] =
-                (Rule){.prerequisites = 0, .recipe = 0},
+                (Rule){.prerequisites = 0, .recipe = read_field_2d},
 
             [TARGET_FIELD_VORTICITY] = (Rule){.prerequisites = new_target_list (
                                                   TARGET_FIELD_HORIZONTAL_WIND),
@@ -152,6 +162,81 @@ compute_diabatic_heating (TARGET id, Targets *targets, Context *ctx) {
         ctx, targets->target[id].field.ncid, targets->target[id].time);
 }
 
+static void compute_friction (TARGET id, Targets *targets, Context *ctx) {
+    friction (ctx, targets->target[id].field.ncid, targets->target[id].time);
+}
+
+static void
+compute_horizontal_wind_etc (TARGET id, Targets *targets, Context *ctx) {
+    static Vec Vnext    = NULL;
+    static Vec zetanext = NULL;
+
+    if (targets->target[id].time == ctx->first) {    // The first step
+        VecDuplicate (ctx->Horizontal_wind, &Vnext);
+        VecDuplicate (ctx->Vorticity, &zetanext);
+    }
+
+    horizontal_wind_and_vorticity_and_vorticity_tendency (
+        targets->target[id].field.ncid, targets->target[id].time, ctx->first,
+        ctx->mt, ctx->Time_coordinate, ctx->da, ctx->da2, ctx->my, ctx->hx,
+        ctx->hy, &ctx->Horizontal_wind, &Vnext, &ctx->Vorticity,
+        &ctx->Vorticity_tendency, &zetanext);
+
+    if (targets->target[id].time == ctx->last) {
+        PetscPrintf (
+            PETSC_COMM_WORLD,
+            "FIX: compute_horizontal_wind_etc fails to free vectors\n");
+        /*
+        VecDestroy (&Vnext);
+        VecDestroy (&zetanext);
+        DMRestoreGlobalVector (daxy, &mu_inv);
+        */
+    }
+}
+
+static void
+compute_temperature_and_tendency (TARGET id, Targets *targets, Context *ctx) {
+    static Vec Tnext = NULL;
+
+    if (targets->target[id].time == ctx->first) {    // The first step
+        VecDuplicate (ctx->Temperature, &Tnext);
+    }
+
+    temperature (
+        targets->target[id].field.ncid, targets->target[id].time, ctx->first,
+        ctx->mt, ctx->Time_coordinate, &ctx->Temperature,
+        &ctx->Temperature_tendency, &Tnext);
+
+    if (targets->target[id].time == ctx->last) {
+        PetscPrintf (
+            PETSC_COMM_WORLD,
+            "FIX: compute_temperature fails to free vectors\n");
+        /*
+        VecDestroy (&Tnext);
+        DMRestoreGlobalVector (daxy, &mu_inv);
+        */
+    }
+}
+
+static void compute_one_over_dry_air_mass_column (
+    TARGET id, Targets *targets, Context *ctx) {
+    one_over_dry_air_mass_column (
+        targets->target[id].field.ncid, targets->target[id].time, ctx);
+};
+
+static void
+compute_sigma_parameter (TARGET id, Targets *targets, Context *ctx) {
+    sigma_parameter (
+        ctx->da, ctx->mz, ctx->Pressure, ctx->Temperature,
+        ctx->Sigma_parameter);
+};
+
+static void read_field_2d (TARGET id, Targets *targets, Context *ctx) {
+    read2D (
+        targets->target[id].field.ncid, targets->target[id].time,
+        targets->target[id].field.name, ctx->Surface_pressure);
+};
+
 static void
 read_target (TARGET id, size_t time, Targets *targets, Context *ctx) {
     switch (targets->target[id].type) {
@@ -187,7 +272,7 @@ void update (TARGET id, const Rules *rules, Targets *targets, Context *ctx) {
     case TARGET_TYPE_FIELD: {
         if (rules->rule[id].recipe) {
             rules->rule[id].recipe (id, targets, ctx);
-            info("Computing %s[%zu]\n", target->field.name, target->time);
+            info ("Computing %s[%zu]\n", target->field.name, target->time);
         }
         break;
     }
