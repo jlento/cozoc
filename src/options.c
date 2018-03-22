@@ -8,7 +8,8 @@
 
 Options new_options (void) {
 
-    Options options = {.fname                           = "wrf.nc4",
+    Options options = {.infname                         = "wrf.nc4",
+                       .outfname                        = {0},
                        .first                           = 0,
                        .last                            = SIZE_MAX,
                        .compute_omega_quasi_geostrophic = PETSC_TRUE,
@@ -20,7 +21,12 @@ Options new_options (void) {
     CHKERRQ (
         PetscOptionsString (
             "-f", "Input file, NetCDF4/HDF5 format, from WRF simulation", 0,
-            options.fname, options.fname, PETSC_MAX_PATH_LEN, 0));
+            options.infname, options.infname, PETSC_MAX_PATH_LEN, 0));
+
+    CHKERRQ (
+        PetscOptionsString (
+            "-o", "Output file, NetCDF4/HDF5 format", 0, options.outfname,
+            options.outfname, PETSC_MAX_PATH_LEN, 0));
 
     CHKERRQ (
         PetscOptionsString (

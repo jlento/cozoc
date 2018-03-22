@@ -19,10 +19,6 @@ static bool file_exists (const char *filename) {
     };
 }
 
-static void report_variable () {
-
-}
-
 static int io_nc_open_par (char const fname[PETSC_MAX_PATH_LEN]) {
     int ncid = -1;
     if (file_exists (fname)) {
@@ -38,51 +34,44 @@ static int io_nc_open_par (char const fname[PETSC_MAX_PATH_LEN]) {
     return ncid;
 }
 
-static NCFILETYPE get_nc_file_type (Options const options, int const ncid) {
-    return NCFILETYPE_WRF;
-}
-
-static GRIDTYPE get_grid_type (Options const options, int const ncid) {
+static GRIDTYPE get_grid_type (Options const *options, int const ncid) {
     return GRIDTYPE_RECTANGULAR;
 }
 
-NCFile new_file (Options options) {
-    NCFile ncfile;
-    int status = 0;
-    strcpy (ncfile.name, options.fname);
-    ncfile.id        = io_nc_open_par (options.fname);
-    ncfile.file_type = get_nc_file_type (options, ncfile.id);
-    if (ncfile.file_type == NCFILETYPE_WRF) {
-        const char dimname[NUM_DIM][NC_MAX_NAME] = {DIMNAME_WRF};
-        for (size_t i = 0; i < NUM_DIM; ++i) {
-            strcpy (ncfile.dimname[i], dimname[i]);
+Files new_files (const Options *options) {
+
+    int ncidin = io_nc_open_par (options->infname);
+
+    Files files = {
+        .ncid_in   = ncidin,
+        .name_in   = options->infname,
+        .ncid_out  = ncidin,
+        .name_out  = options->outfname,
+        .grid_type = get_grid_type (options, ncidin),
+        .dimname = {[DIM_T] = "time", [DIM_Z] = "vlevs",
+                    [DIM_Y] = "south_north", [DIM_X] = "west_east"},
+        .dimsize = {[DIM_T] = file_get_dimsize (ncidin, "time"),
+                    [DIM_Z] = file_get_dimsize (ncidin, "vlevs"),
+                    [DIM_Y] = file_get_dimsize (ncidin, "south_north"),
+                    [DIM_X] = file_get_dimsize (ncidin, "west_east")}};
+
+    if (options->outfname[0]) {
+        int dimids[4];
+
+        nc_create_par (
+            options->outfname, NC_MPIIO | NC_NETCDF4, PETSC_COMM_WORLD,
+            MPI_INFO_NULL, &files.ncid_out);
+
+        for (size_t i = 0; i < NUM_DIM; i++) {
+            nc_def_dim (
+                files.ncid_out, files.dimname[i], files.dimsize[i], &dimids[i]);
         }
-    } else {
-        SETERRABORT (PETSC_COMM_SELF, 1, "Could not determine input file type");
-    };
-    ncfile.grid_type = get_grid_type (options, ncfile.id);
 
-    // Output fields
-
-    file_redef (ncfile.id);
-
-    if (options.compute_omega_quasi_geostrophic) {
-        status = file_def_var (ncfile.id, OMEGA_QG_ID_STRING);
+        nc_enddef (files.ncid_out);
     }
 
-    if (options.compute_omega_generalized) {
-        for (int i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++)
-            status = file_def_var (ncfile.id, omega_component_id_string[i]);
-    }
-
-    file_enddef (ncfile.id);
-
-    return ncfile;
+    return files;
 }
-
-const char *dimnames[NDIMS] = {"time", "vlevs", "south_north", "west_east"};
-
-const char *fieldnames[NFIELDS] = {"XTIME", "LEV", "F"};
 
 PetscErrorCode file_open (const char *wrfin, int *ncid) {
     if (file_exists (wrfin)) {
@@ -98,7 +87,10 @@ PetscErrorCode file_open (const char *wrfin, int *ncid) {
     }
 }
 
-void close_file (NCFile ncfile) { nc_close (ncfile.id); }
+void close_files (Files files) {
+    nc_close (files.ncid_in);
+    nc_close (files.ncid_out);
+}
 
 PetscInt file_get_dimsize (const int ncid, const char *dimname) {
     int    dimid;
@@ -108,23 +100,14 @@ PetscInt file_get_dimsize (const int ncid, const char *dimname) {
     return dimsize;
 }
 
-PetscErrorCode file_redef (const int ncid) {
-    nc_redef (ncid);
-    return (0);
-}
+PetscErrorCode
+file_def_var (const int ncid, const char *name, const Files *file) {
+    int dimids[NUM_DIM];
 
-PetscErrorCode file_enddef (const int ncid) {
-    nc_enddef (ncid);
-    return (0);
-}
+    for (int i = 0; i < NUM_DIM; i++)
+        nc_inq_dimid (ncid, file->dimname[i], &dimids[i]);
 
-PetscErrorCode file_def_var (const int ncid, const char *name) {
-    int dimids[4];
-
-    for (int i = 0; i < NDIMS; i++)
-        nc_inq_dimid (ncid, dimnames[i], &dimids[i]);
-
-    nc_def_var (ncid, name, NC_FLOAT, NDIMS, dimids, 0);
+    nc_def_var (ncid, name, NC_FLOAT, NUM_DIM, dimids, 0);
     return (0);
 }
 
@@ -201,6 +184,7 @@ int write3D (
     PetscInt       zs, ys, xs, zm, ym, xm;
     PetscScalar ***a;
     size_t         start[4], count[4];
+    int            ierr;
 
     VecGetDM (v, &da);
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
@@ -213,20 +197,23 @@ int write3D (
     count[1] = zm;
     count[2] = ym;
     count[3] = xm;
-    nc_inq_varid (ncid, varname, &id);
-    nc_var_par_access (ncid, id, NC_COLLECTIVE);
-    nc_put_vara_double (
+    ierr     = nc_inq_varid (ncid, varname, &id);
+    ERR (ierr);
+    ierr = nc_var_par_access (ncid, id, NC_COLLECTIVE);
+    ERR (ierr);
+    ierr = nc_put_vara_double (
         ncid, id, start, count, &a[start[1]][start[2]][start[3]]);
+    ERR (ierr);
     DMDAVecRestoreArray (da, v, &a);
     return (0);
 }
 
 int write3Ddump (const char *varname, size_t mx, size_t my, size_t mz, Vec v) {
-    int    varid, ncid, ndims = 4;
-    char   fname[256] = "";
-    char * dnames[4]  = {"TIME", "ZDIM", "YDIM", "XDIM"};
-    size_t ds[4]      = {1, mz, my, mx};
-    int    dimids[4];
+    int         varid, ncid, ndims = 4;
+    char        fname[256] = "";
+    const char *dnames[4]  = {"TIME", "ZDIM", "YDIM", "XDIM"};
+    size_t      ds[4]      = {1, mz, my, mx};
+    int         dimids[4];
 
     strcat (fname, varname);
     strcat (fname, ".nc");

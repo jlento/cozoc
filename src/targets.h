@@ -52,7 +52,7 @@ struct TARGETS {
     TARGETS *next;
 };
 
-Targets new_targets (Options options, NCFile ncfile, Context *);
+Targets new_targets (Options, Files, Context *);
 TARGETS *push (TARGET target, TARGETS *oldhead);
 TARGETS *pop (TARGETS **head);
 TARGETS *_new_target_list (const size_t, const TARGET[]);

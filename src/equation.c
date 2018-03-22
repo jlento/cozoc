@@ -6,7 +6,7 @@
 #include "omegaQG.h"
 #include "options.h"
 
-Equations new_equations (Options const options, NCFile const ncfile) {
+Equations new_equations (Options const options) {
     Equations eqs = {.num_eq = 0, .L = {0}, .a = {0}, .id_string = {""}};
     if (options.compute_omega_quasi_geostrophic) {
         eqs.L[eqs.num_eq] = omega_qg_compute_operator;

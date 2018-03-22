@@ -1,5 +1,6 @@
 #include "rules.h"
 #include "context.h"
+#include "equation.h"
 #include "fields.h"
 #include "omega.h"
 #include "operators.h"
@@ -15,6 +16,7 @@ static void compute_one_over_dry_air_mass_column (TARGET, Targets *, Context *);
 static void compute_temperature_and_tendency (TARGET, Targets *, Context *);
 static void compute_sigma_parameter (TARGET, Targets *, Context *);
 static void read_field_2d (TARGET, Targets *, Context *);
+static void read_field_3d (TARGET, Targets *, Context *);
 static void compute_omega_component (TARGET, Targets *, Context *);
 
 Rules new_rules (void) {
@@ -28,7 +30,7 @@ Rules new_rules (void) {
                        .recipe        = compute_friction},
 
             [TARGET_FIELD_GEOPOTENTIAL_HEIGHT] =
-                (Rule){.prerequisites = 0, .recipe = 0},
+                (Rule){.prerequisites = 0, .recipe = read_field_3d},
 
             [TARGET_FIELD_HORIZONTAL_WIND] =
                 (Rule){.prerequisites = 0,
@@ -163,24 +165,23 @@ void print_target_list (
 static void
 compute_diabatic_heating (TARGET id, Targets *targets, Context *ctx) {
     diabatic_heating (
-        ctx, targets->target[id].field.ncid, targets->target[id].time);
+        ctx, ctx->ncid, targets->target[id].time);
 }
 
 static void compute_friction (TARGET id, Targets *targets, Context *ctx) {
-    friction (ctx, targets->target[id].field.ncid, targets->target[id].time);
+    friction (ctx, ctx->ncid, targets->target[id].time);
 }
 
 static void
 compute_omega_component (TARGET id, Targets *targets, Context *ctx) {
-
     KSPSetComputeOperators (ctx->ksp, omega_compute_operator, ctx);
 
     switch (id) {
     case TARGET_FIELD_OMEGA_Q: {
-        KSPSetComputeRHS (
-            ctx->ksp, omega_compute_rhs_F_Q, ctx);
-        KSPSolve (ctx->ksp, 0, 0);
-        KSPGetSolution (ctx->ksp, &ctx->omega[GENERALIZED_OMEGA_COMPONENT_Q]);
+        KSPSetComputeRHS (ctx->ksp, omega_compute_rhs_F_Q, ctx);
+        KSPSolve (ctx->ksp, 0, ctx->omega[GENERALIZED_OMEGA_COMPONENT_Q]);
+        // KSPGetSolution (ctx->ksp, &x);
+        break;
     }
     default: { info ("Not implemented in compute_omega_component.\n"); }
     }
@@ -188,16 +189,16 @@ compute_omega_component (TARGET id, Targets *targets, Context *ctx) {
 
 static void
 compute_horizontal_wind_etc (TARGET id, Targets *targets, Context *ctx) {
-    static Vec Vnext    = NULL;
-    static Vec zetanext = NULL;
+    static Vec Vnext    = 0;
+    static Vec zetanext = 0;
 
-    if (targets->target[id].time == ctx->first) {    // The first step
+    if (!Vnext) {    // The first step
         VecDuplicate (ctx->Horizontal_wind, &Vnext);
         VecDuplicate (ctx->Vorticity, &zetanext);
     }
 
     horizontal_wind_and_vorticity_and_vorticity_tendency (
-        targets->target[id].field.ncid, targets->target[id].time, ctx->first,
+        ctx->ncid, targets->target[id].time, ctx->first,
         ctx->mt, ctx->Time_coordinate, ctx->da, ctx->da2, ctx->my, ctx->hx,
         ctx->hy, &ctx->Horizontal_wind, &Vnext, &ctx->Vorticity,
         &ctx->Vorticity_tendency, &zetanext);
@@ -216,14 +217,14 @@ compute_horizontal_wind_etc (TARGET id, Targets *targets, Context *ctx) {
 
 static void
 compute_temperature_and_tendency (TARGET id, Targets *targets, Context *ctx) {
-    static Vec Tnext = NULL;
+    static Vec Tnext = 0;
 
-    if (targets->target[id].time == ctx->first) {    // The first step
+    if (!Tnext) {    // The first step
         VecDuplicate (ctx->Temperature, &Tnext);
     }
 
     temperature (
-        targets->target[id].field.ncid, targets->target[id].time, ctx->first,
+        ctx->ncid, targets->target[id].time, ctx->first,
         ctx->mt, ctx->Time_coordinate, &ctx->Temperature,
         &ctx->Temperature_tendency, &Tnext);
 
@@ -241,7 +242,7 @@ compute_temperature_and_tendency (TARGET id, Targets *targets, Context *ctx) {
 static void compute_one_over_dry_air_mass_column (
     TARGET id, Targets *targets, Context *ctx) {
     one_over_dry_air_mass_column (
-        targets->target[id].field.ncid, targets->target[id].time, ctx);
+        ctx->ncid, targets->target[id].time, ctx);
 }
 
 static void
@@ -253,8 +254,14 @@ compute_sigma_parameter (TARGET id, Targets *targets, Context *ctx) {
 
 static void read_field_2d (TARGET id, Targets *targets, Context *ctx) {
     read2D (
-        targets->target[id].field.ncid, targets->target[id].time,
+        ctx->ncid, targets->target[id].time,
         targets->target[id].field.name, ctx->Surface_pressure);
+}
+
+static void read_field_3d (TARGET id, Targets *targets, Context *ctx) {
+    file_read_3d (
+        ctx->ncid, targets->target[id].time,
+        targets->target[id].field.name, targets->target[id].field.vec);
 }
 
 static void
@@ -262,7 +269,7 @@ read_target (TARGET id, size_t time, Targets *targets, Context *ctx) {
     switch (targets->target[id].type) {
     case TARGET_TYPE_FIELD: {
         Field *f = &targets->target[id].field;
-        file_read_3d (f->ncid, time, f->name, f->vec);
+        file_read_3d (ctx->ncid, time, f->name, f->vec);
         break;
     }
     case TARGET_TYPE_OPERATOR: {
@@ -293,6 +300,11 @@ void update (TARGET id, const Rules *rules, Targets *targets, Context *ctx) {
         if (rules->rule[id].recipe) {
             info ("Computing %s[%zu]\n", target->field.name, target->time);
             rules->rule[id].recipe (id, targets, ctx);
+        }
+        if (ctx->ncid && id == TARGET_FIELD_OMEGA_Q) {
+            write3D (
+                ctx->ncid, target->time, target->field.name,
+                target->field.vec);
         }
         break;
     }

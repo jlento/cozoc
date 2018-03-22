@@ -7,6 +7,7 @@
 
 typedef struct Context Context;
 struct Context {
+    int          ncid; // Input file
     size_t       current, first, last;
     DM           da, da2;
     DM           daxy;
@@ -31,13 +32,13 @@ struct Context {
     Vec          Vorticity_tendency;
 };
 
-Context new_context (Options, NCFile);
+Context new_context (Options, Files);
 
 Vec new_vec (Context *);
 
 void free_context (Context *ctx);
 
-void update_context (size_t, NCFile, Context *);
+void update_context (size_t, Files, Context *);
 
 int diabatic_heating (Context *, const int ncid, const int time);
 int friction (Context *, const int ncid, const int time);

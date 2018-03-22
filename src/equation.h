@@ -19,5 +19,5 @@ struct Equations {
                    NUM_GENERALIZED_OMEGA_COMPONENTS][NC_MAX_NAME];
 };
 
-Equations new_equations (Options, NCFile);
+Equations new_equations (Options);
 Vec solution (ComputeLHSOperatorFunction, ComputeRHSVectorFunction, Context);

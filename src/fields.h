@@ -4,6 +4,7 @@
 #include "defs.h"
 #include "io.h"
 #include "options.h"
+#include <stdbool.h>
 #include <netcdf.h>
 #include <petscvec.h>
 
@@ -16,7 +17,7 @@ enum FIELD_TYPE {
 typedef enum FIELD_TYPE FIELD_TYPE;
 
 struct Field {
-    int         ncid;
+    bool        write;
     const char  name[NC_MAX_NAME + 1];
     const char *description;
     const char *units;

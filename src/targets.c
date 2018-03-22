@@ -1,16 +1,17 @@
 #include "targets.h"
 #include "context.h"
 #include "fields.h"
+#include "netcdf.h"
 #include "operators.h"
 #include "options.h"
 
-Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
+Targets new_targets (Options options, Files files, Context *ctx) {
     Targets targets = {
         .target = {
 
                 [TARGET_FIELD_DIABATIC_HEATING] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.ncid        = 0,
+                             .field = (Field){.write       = false,
                                               .name        = "Q",
                                               .description = "Diabatic heating",
                                               .units       = 0,
@@ -19,7 +20,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
 
                 [TARGET_FIELD_FRICTION] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.ncid        = 0,
+                             .field = (Field){.write       = false,
                                               .name        = "F",
                                               .description = "Friction",
                                               .units       = 0,
@@ -29,7 +30,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
                 [TARGET_FIELD_GEOPOTENTIAL_HEIGHT] =
                     (Target){.type = TARGET_TYPE_FIELD,
                              .field =
-                                 (Field){.ncid        = 0,
+                                 (Field){.write       = false,
                                          .name        = "Z",
                                          .description = "Geopotential height",
                                          .units       = 0,
@@ -38,7 +39,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
 
                 [TARGET_FIELD_HORIZONTAL_WIND] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.ncid        = 0,
+                             .field = (Field){.write       = false,
                                               .name        = "V",
                                               .description = "Horizontal wind",
                                               .units       = 0,
@@ -50,19 +51,20 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
                         .type = TARGET_TYPE_FIELD,
                         .field =
                             (Field){
-                                .ncid        = 0,
-                                .name        = "w_q",
+                                .write       = true,
+                                .name        = "ome_q",
                                 .description = "Omega due to diabatic heating",
                                 .units       = "Pa s-1",
-                                .vec = ctx->omega[GENERALIZED_OMEGA_COMPONENT_Q]},
+                                .vec =
+                                    ctx->omega[GENERALIZED_OMEGA_COMPONENT_Q]},
                         .time = options.first - 1},
 
                 [TARGET_FIELD_MU_INV] =
                     (Target){
                         .type = TARGET_TYPE_FIELD,
                         .field =
-                            (Field){.ncid = 0,
-                                    .name = "mu_inv",
+                            (Field){.write = false,
+                                    .name  = "mu_inv",
                                     .description =
                                         "One over dry air mass column",
                                     .units = 0,
@@ -71,7 +73,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
 
                 [TARGET_FIELD_TEMPERATURE] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.ncid        = ncfile.id,
+                             .field = (Field){.write       = false,
                                               .name        = "TT",
                                               .description = "Temperature",
                                               .units       = "K",
@@ -81,7 +83,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
                 [TARGET_FIELD_TEMPERATURE_TENDENCY] =
                     (Target){.type = TARGET_TYPE_FIELD,
                              .field =
-                                 (Field){.ncid        = ncfile.id,
+                                 (Field){.write       = false,
                                          .name        = "dT",
                                          .description = "Temperature tendency",
                                          .units       = "K -s",
@@ -90,7 +92,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
 
                 [TARGET_FIELD_SIGMA_PARAMETER] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.ncid        = ncfile.id,
+                             .field = (Field){.write       = false,
                                               .name        = "sigma",
                                               .description = "Sigma parameter",
                                               .units       = "",
@@ -99,7 +101,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
 
                 [TARGET_FIELD_SURFACE_PRESSURE] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.ncid        = ncfile.id,
+                             .field = (Field){.write       = false,
                                               .name        = "PSFC",
                                               .description = "Surface pressure",
                                               .units       = "",
@@ -108,7 +110,7 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
 
                 [TARGET_FIELD_VORTICITY] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.ncid        = ncfile.id,
+                             .field = (Field){.write       = false,
                                               .name        = "zeta",
                                               .description = "Vorticity",
                                               .units       = "",
@@ -118,13 +120,23 @@ Targets new_targets (Options options, NCFile ncfile, Context *ctx) {
                 [TARGET_FIELD_VORTICITY_TENDENCY] =
                     (Target){.type = TARGET_TYPE_FIELD,
                              .field =
-                                 (Field){.ncid        = ncfile.id,
+                                 (Field){.write       = false,
                                          .name        = "dzeta",
                                          .description = "Vorticity tendency",
                                          .units       = "",
                                          .vec = ctx->Vorticity_tendency},
                              .time = options.first - 1},
         }};
+
+    nc_redef (files.ncid_out);
+    for (size_t i = 0; i < NUM_TARGET; i++) {
+        Target *t = &targets.target[i];
+        if (t->type == TARGET_TYPE_FIELD &&
+            t->field.write) {
+            file_def_var (files.ncid_out, t->field.name, &files);
+        }
+    }
+    nc_enddef (files.ncid_out);
 
     return targets;
 }

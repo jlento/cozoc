@@ -8,15 +8,18 @@
 #include <petscdmda.h>
 #include <petscksp.h>
 
-Context new_context (Options const options, NCFile const ncfile) {
-    Context ctx;
+Context new_context (Options const options, Files const files) {
+    Context   ctx;
+    const int ncid = files.ncid_in;
+
+    ctx.ncid = ncid;
 
     /* Read dimensions */
 
-    ctx.mx = file_get_dimsize (ncfile.id, dimnames[XDIM]);
-    ctx.my = file_get_dimsize (ncfile.id, dimnames[YDIM]);
-    ctx.mz = file_get_dimsize (ncfile.id, dimnames[ZDIM]);
-    ctx.mt = file_get_dimsize (ncfile.id, dimnames[TIME]);
+    ctx.mx = files.dimsize[DIM_X];
+    ctx.my = files.dimsize[DIM_Y];
+    ctx.mz = files.dimsize[DIM_Z];
+    ctx.mt = files.dimsize[DIM_T];
 
     /* Set up the distributed 3D array layout for 1- and 2-component
      * fields */
@@ -52,6 +55,9 @@ Context new_context (Options const options, NCFile const ncfile) {
     VecDuplicate (ctx.Temperature, &ctx.Diabatic_heating);
     VecDuplicate (ctx.Temperature, &ctx.Temperature_tendency);
     VecDuplicate (ctx.Temperature, &ctx.Vorticity_tendency);
+    for (size_t i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++) {
+        VecDuplicate (ctx.Temperature, &ctx.omega[i]);
+    }
 
     DMCreateGlobalVector (ctx.da2, &ctx.Horizontal_wind);
     VecDuplicate (ctx.Horizontal_wind, &ctx.Friction);
@@ -64,7 +70,7 @@ Context new_context (Options const options, NCFile const ncfile) {
         size_t start[1] = {0};
         size_t count[1] = {ctx.mt};
         file_read_array_double (
-            ncfile.id, fieldnames[TIME_COORDINATE], start, count,
+            ncid, "XTIME", start, count,
             ctx.Time_coordinate);
 
         for (int i = 0; i < (int)ctx.mt; i++)
@@ -76,7 +82,7 @@ Context new_context (Options const options, NCFile const ncfile) {
         size_t start[1] = {0};
         size_t count[1] = {ctx.mz};
         file_read_array_double (
-            ncfile.id, fieldnames[Z_COORDINATE], start, count, ctx.Pressure);
+            ncid, "LEV", start, count, ctx.Pressure);
     }
 
     /* Coriollis parameter is taken to be a function of latitude, only
@@ -85,16 +91,15 @@ Context new_context (Options const options, NCFile const ncfile) {
         size_t start[3] = {0, 0, 0};
         size_t count[3] = {1, ctx.my, 1};
         file_read_array_double (
-            ncfile.id, fieldnames[CORIOLIS], start, count,
-            ctx.Coriolis_parameter);
+            ncid, "F", start, count, ctx.Coriolis_parameter);
     }
 
     /* Grid spacings */
-    file_read_attribute (ncfile.id, "DX", &ctx.hx);
-    file_read_attribute (ncfile.id, "DY", &ctx.hy);
+    file_read_attribute (ncid, "DX", &ctx.hx);
+    file_read_attribute (ncid, "DY", &ctx.hy);
     ctx.hz = ctx.Pressure[1] - ctx.Pressure[0]; /* hz is negative!!! */
 
-    file_read_int_attribute (ncfile.id, "CU_PHYSICS", &ctx.cu_physics);
+    file_read_int_attribute (ncid, "CU_PHYSICS", &ctx.cu_physics);
 
     ctx.first = max_of_size_t (0, options.first);
     ctx.last  = min_of_size_t (options.last, ctx.mt - 1);
@@ -579,7 +584,7 @@ int context_destroy (Context *ctx) {
 }
 */
 
-void update_context (size_t step, NCFile ncfile, Context *ctx) {
+void update_context (size_t step, Files ncfile, Context *ctx) {
 
     DM           da       = ctx->da;
     DM           da2      = ctx->da2;
@@ -599,9 +604,11 @@ void update_context (size_t step, NCFile ncfile, Context *ctx) {
     Vec *        zeta     = &ctx->Vorticity;
     Vec *        zetatend = &ctx->Vorticity_tendency;
 
-    static Vec Tnext    = NULL;
-    static Vec Vnext    = NULL;
-    static Vec zetanext = NULL;
+    static Vec Tnext    = 0;
+    static Vec Vnext    = 0;
+    static Vec zetanext = 0;
+
+    const int ncid = ctx->ncid;
 
     if (step == ctx->first) {    // The first step
         VecDuplicate (*T, &Tnext);
@@ -609,16 +616,16 @@ void update_context (size_t step, NCFile ncfile, Context *ctx) {
         VecDuplicate (*zeta, &zetanext);
     }
 
-    read2D (ncfile.id, step, "PSFC", psfc);
-    file_read_3d (ncfile.id, step, "GHT", Z);
-    temperature (ncfile.id, step, ctx->first, mt, time, T, Ttend, &Tnext);
+    read2D (ncid, step, "PSFC", psfc);
+    file_read_3d (ncid, step, "GHT", Z);
+    temperature (ncid, step, ctx->first, mt, time, T, Ttend, &Tnext);
     sigma_parameter (da, mz, p, *T, sigma);
     horizontal_wind_and_vorticity_and_vorticity_tendency (
-        ncfile.id, step, ctx->first, mt, time, da, da2, my, hx, hy, V, &Vnext,
-        zeta, zetatend, &zetanext);
-    one_over_dry_air_mass_column (ncfile.id, step, ctx);
-    diabatic_heating (ctx, ncfile.id, step);
-    friction (ctx, ncfile.id, step);
+        ncid, step, ctx->first, mt, time, da, da2, my, hx, hy, V, &Vnext, zeta,
+        zetatend, &zetanext);
+    one_over_dry_air_mass_column (ncid, step, ctx);
+    diabatic_heating (ctx, ncid, step);
+    friction (ctx, ncid, step);
 
     if (step == ctx->last) {
         PetscPrintf (
@@ -645,6 +652,9 @@ void free_context (Context *ctx) {
     VecDestroy (&ctx->Diabatic_heating);
     VecDestroy (&ctx->Temperature_tendency);
     VecDestroy (&ctx->Vorticity_tendency);
+    for (size_t i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++) {
+        VecDestroy (&ctx->omega[i]);
+    }
 
     VecDestroy (&ctx->Horizontal_wind);
     VecDestroy (&ctx->Friction);

@@ -7,7 +7,7 @@
 #include "targets.h"
 #include <petscsys.h>
 
-let static help = BANNER
+static let help = BANNER
     "Solves quasi-geostrophic and generalized omega equations.\n"
     "\n"
     "Usage: [mpiexec -n procs] cozoc [-f <fname>] [-o <fname>] [-h|-Q|-G] [-r "
@@ -25,18 +25,19 @@ int main (int argc, char *argv[]) {
     PetscInitialize (&argc, &argv, 0, help);
 
     let options = new_options ();
-    let ncfile  = new_file (options);
-    var ctx     = new_context (options, ncfile);
+    let files = new_files (&options);
     let rules   = new_rules ();
-    var targets = new_targets (options, ncfile, &ctx);
+    var ctx     = new_context (options, files);
+    var targets = new_targets (options, files, &ctx);
 
-    const Equations eqs = new_equations (options, ncfile);
+    const Equations eqs = new_equations (options);
 
     info (
-        BANNER "Input file      : %s\n"
-               "Steps in file   : %zu-%zu\n"
-               "Computing steps : %zu-%zu\n\n",
-        ncfile.name, 0, ctx.mt - 1, ctx.first, ctx.last);
+        BANNER "Input file            : %s\n"
+               "Output file           : %s\n"
+               "Steps in input file   : %zu-%zu\n"
+               "Computing steps       : %zu-%zu\n\n",
+        files.name_in, files.name_out, 0, ctx.mt - 1, ctx.first, ctx.last);
 
     draw (&rules, &targets, "deps.dot");
     run (&rules, &targets, &ctx);
@@ -45,16 +46,16 @@ int main (int argc, char *argv[]) {
     for (size_t istep = ctx.first; istep < ctx.last + 1; istep++) {
 
         info ("Step: %d\n", istep);
-        update_context (istep, ncfile, &ctx);
+        update_context (istep, files, &ctx);
 
-        for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
-
+        // for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
+        for (size_t ieq = 0; ieq < 3; ieq++) {
             Vec x = solution (eqs.L[ieq], eqs.a[ieq], ctx);
-            write3D (ncfile.id, istep, eqs.id_string[ieq], x);
+            write3D (files.ncid_out, istep, eqs.id_string[ieq], x);
         }
     }
 
-    close_file (ncfile);
+    close_files (files);
     PetscFinalize ();
     return 0;
 }
