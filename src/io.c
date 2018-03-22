@@ -1,3 +1,4 @@
+#include "defs.h"
 #include "io.h"
 #include "omega.h"
 #include "omegaQG.h"
@@ -197,6 +198,7 @@ int write3D (
     count[1] = zm;
     count[2] = ym;
     count[3] = xm;
+    info("Writing variable %s.\n", varname);
     ierr     = nc_inq_varid (ncid, varname, &id);
     ERR (ierr);
     ierr = nc_var_par_access (ncid, id, NC_COLLECTIVE);

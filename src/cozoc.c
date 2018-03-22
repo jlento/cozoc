@@ -6,6 +6,7 @@
 #include "rules.h"
 #include "targets.h"
 #include <petscsys.h>
+#include <stdbool.h>
 
 static let help = BANNER
     "Solves quasi-geostrophic and generalized omega equations.\n"
@@ -43,6 +44,7 @@ int main (int argc, char *argv[]) {
     run (&rules, &targets, &ctx);
 
     // Old main loop to be replaced by the above run()
+    if (false) {
     for (size_t istep = ctx.first; istep < ctx.last + 1; istep++) {
 
         info ("Step: %d\n", istep);
@@ -54,7 +56,7 @@ int main (int argc, char *argv[]) {
             write3D (files.ncid_out, istep, eqs.id_string[ieq], x);
         }
     }
-
+    }
     close_files (files);
     PetscFinalize ();
     return 0;
