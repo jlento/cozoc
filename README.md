@@ -27,12 +27,35 @@ libraries:
 - HDF5 (parallel)
 - NetCDF4/HDF5 (parallel)
 
+## Setting up the environment for COZOC using conda package manager
 
-## Testing and developing COZOC in Ubuntu 16.04 LTS
+After cloning the cozoc repository, install the requirements and development
+tools by running
 
-The easiest way to get started with COZOC is to clone the whole
-development environment. Install Git, VirtualBox and Vagrant on your
-laptop (the host machine). Then:
+    bash setup.sh
+
+This takes a while as it is installing the complete software stack for the
+dependencies. Tested on Ubuntu 16.04 LTS, and should work on many other Linux
+OSes, too. Likely will work on OS X with minor modifications.
+
+Then, setup the environment with
+
+    source env.sh
+
+If everything went fine, one should be able to build and test cozoc with
+
+    mkdir build
+    cd build
+    cmake ..
+    make check
+    
+
+## Setting up the environment for COZOC in Ubuntu 16.04 LTS virtual machine
+
+An alternate to using conda is to install the dependencies on the host machine
+directly using the package manager provided by the OS, or in a virtual machine.
+For virtual machine installs, install Git, VirtualBox and Vagrant on your laptop
+(the host machine). Then:
 
     vagrant up
 
