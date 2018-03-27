@@ -10,9 +10,15 @@
     "| |_| / /| |_| |\n"                                                       \
     " \\___/____\\___/ \n"                                                     \
     "                \n"
+#define GCC_VERSION (__GNUC__ * 10000 \
+                     + __GNUC_MINOR__ * 100 \
+                     + __GNUC_PATCHLEVEL__)
 
+#if GCC_VERSION > 40899
 #define let __auto_type const
 #define var __auto_type
+#endif
+
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 

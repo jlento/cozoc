@@ -1,6 +1,8 @@
 #!/bin/bash
 
 curdir=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+
+ncgen=$(which ncgen 2> /dev/null)
 : ${ncgen:=${curdir}/../netcdf/bin/ncgen}
 
 # Defaults

@@ -8,7 +8,7 @@
 #include <petscsys.h>
 #include <stdbool.h>
 
-static let help = BANNER
+static const char help[] = BANNER
     "Solves quasi-geostrophic and generalized omega equations.\n"
     "\n"
     "Usage: [mpiexec -n procs] cozoc [-f <fname>] [-o <fname>] [-h|-Q|-G] [-r "
@@ -25,11 +25,12 @@ int main (int argc, char *argv[]) {
 
     PetscInitialize (&argc, &argv, 0, help);
 
-    let options = new_options ();
-    let files = new_files (&options);
-    let rules   = new_rules ();
-    var ctx     = new_context (options, files);
-    var targets = new_targets (options, files, &ctx);
+    const Options options = new_options ();
+    const Files   files   = new_files (&options);
+
+    const Rules   rules   = new_rules ();
+    Context       ctx     = new_context (options, files);
+    Targets       targets = new_targets (options, files, &ctx);
 
     const Equations eqs = new_equations (options);
 
@@ -45,17 +46,17 @@ int main (int argc, char *argv[]) {
 
     // Old main loop to be replaced by the above run()
     if (false) {
-    for (size_t istep = ctx.first; istep < ctx.last + 1; istep++) {
+        for (size_t istep = ctx.first; istep < ctx.last + 1; istep++) {
 
-        info ("Step: %d\n", istep);
-        update_context (istep, files, &ctx);
+            info ("Step: %d\n", istep);
+            update_context (istep, files, &ctx);
 
-        // for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
-        for (size_t ieq = 0; ieq < 3; ieq++) {
-            Vec x = solution (eqs.L[ieq], eqs.a[ieq], ctx);
-            write3D (files.ncid_out, istep, eqs.id_string[ieq], x);
+            // for (size_t ieq = 0; ieq < eqs.num_eq; ieq++) {
+            for (size_t ieq = 0; ieq < 3; ieq++) {
+                Vec x = solution (eqs.L[ieq], eqs.a[ieq], ctx);
+                write3D (files.ncid_out, istep, eqs.id_string[ieq], x);
+            }
         }
-    }
     }
     close_files (files);
     PetscFinalize ();
