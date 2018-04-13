@@ -15,9 +15,21 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                              .field = (Field){.write       = true,
                                               .name        = "Q",
                                               .description = "Diabatic heating",
-                                              .units       = 0,
+                                              .units       = "K s**-1",
                                               .vec = ctx->Diabatic_heating},
                              .time = options.first - 1},
+
+                [TARGET_FIELD_DIABATIC_HEATING_ATTENNUATED] =
+                    (Target){
+                        .type = TARGET_TYPE_FIELD,
+                        .field =
+                            (Field){.write       = true,
+                                    .name        = "Qatt",
+                                    .description = "Diabatic heating with "
+                                                   "surface attennuation",
+                                    .units = "K s**-1",
+                                    .vec   = ctx->Diabatic_heating_attennuated},
+                        .time = options.first - 1},
 
                 [TARGET_FIELD_FRICTION] =
                     (Target){.type  = TARGET_TYPE_FIELD,
@@ -73,16 +85,16 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                         .time = options.first - 1},
 
                 [TARGET_FIELD_SURFACE_ATTENNUATION] =
-                (Target){
-                    .type = TARGET_TYPE_FIELD,
-                    .field =
-                    (Field){.write = true,
-                            .name  = "ATTENNUATION",
-                            .description =
-                            "Pressure level surface attennuation",
-                            .units = 0,
-                            .vec   = ctx->Surface_attennuation},
-                    .time = options.first - 1},
+                    (Target){
+                        .type = TARGET_TYPE_FIELD,
+                        .field =
+                            (Field){.write = true,
+                                    .name  = "ATTENNUATION",
+                                    .description =
+                                        "Pressure level surface attennuation",
+                                    .units = 0,
+                                    .vec   = ctx->Surface_attennuation},
+                        .time = options.first - 1},
 
                 [TARGET_FIELD_TEMPERATURE] =
                     (Target){.type  = TARGET_TYPE_FIELD,
@@ -144,8 +156,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
     nc_redef (files.ncid_out);
     for (size_t i = 0; i < NUM_TARGET; i++) {
         Target *t = &targets.target[i];
-        if (t->type == TARGET_TYPE_FIELD &&
-            t->field.write) {
+        if (t->type == TARGET_TYPE_FIELD && t->field.write) {
             file_def_var (files.ncid_out, t->field.name, &files);
         }
     }

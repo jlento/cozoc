@@ -10,22 +10,37 @@
 #include <petscksp.h>
 #include <stdbool.h>
 
-static void compute_diabatic_heating (TARGET, Targets *, Context *);
-static void compute_friction (TARGET, Targets *, Context *);
-static void compute_horizontal_wind_etc (TARGET, Targets *, Context *);
-static void compute_omega_component (TARGET, Targets *, Context *);
-static void compute_one_over_dry_air_mass_column (TARGET, Targets *, Context *);
-static void compute_temperature_and_tendency (TARGET, Targets *, Context *);
-static void compute_sigma_parameter (TARGET, Targets *, Context *);
-static void compute_surface_attennuation (TARGET, Targets *, Context *);
-static void read_field_2d (TARGET, Targets *, Context *);
-static void read_field_3d (TARGET, Targets *, Context *);
+static void
+            compute_diabatic_heating (TARGET, Targets *, const Rules *, Context *);
+static void compute_friction (TARGET, Targets *, const Rules *, Context *);
+static void
+compute_horizontal_wind_etc (TARGET, Targets *, const Rules *, Context *);
+static void
+            compute_omega_component (TARGET, Targets *, const Rules *, Context *);
+static void compute_one_over_dry_air_mass_column (
+    TARGET, Targets *, const Rules *, Context *);
+static void
+compute_temperature_and_tendency (TARGET, Targets *, const Rules *, Context *);
+static void
+compute_sigma_parameter (TARGET, Targets *, const Rules *, Context *);
+static void
+            compute_surface_attennuation (TARGET, Targets *, const Rules *, Context *);
+static void compute_surface_attennuation_factors (
+    TARGET, Targets *, const Rules *, Context *);
+static void read_field_2d (TARGET, Targets *, const Rules *, Context *);
+static void read_field_3d (TARGET, Targets *, const Rules *, Context *);
 
 Rules new_rules (void) {
     Rules rules = {{
             [TARGET_FIELD_DIABATIC_HEATING] =
                 (Rule){.prerequisites = new_target_list (TARGET_FIELD_MU_INV),
                        .recipe        = compute_diabatic_heating},
+
+            [TARGET_FIELD_DIABATIC_HEATING_ATTENNUATED] =
+                (Rule){.prerequisites = new_target_list (
+                           TARGET_FIELD_SURFACE_ATTENNUATION,
+                           TARGET_FIELD_DIABATIC_HEATING),
+                       .recipe = compute_surface_attennuation},
 
             [TARGET_FIELD_FRICTION] =
                 (Rule){.prerequisites = new_target_list (TARGET_FIELD_MU_INV),
@@ -38,12 +53,13 @@ Rules new_rules (void) {
                 (Rule){.prerequisites = 0,
                        .recipe        = compute_horizontal_wind_etc},
 
-            [TARGET_FIELD_OMEGA_Q] = (Rule){.prerequisites = new_target_list (
-                                                TARGET_FIELD_DIABATIC_HEATING,
-                                                TARGET_FIELD_HORIZONTAL_WIND,
-                                                TARGET_FIELD_SIGMA_PARAMETER,
-                                                TARGET_FIELD_VORTICITY),
-                                            .recipe = compute_omega_component},
+            [TARGET_FIELD_OMEGA_Q] =
+                (Rule){.prerequisites = new_target_list (
+                           TARGET_FIELD_DIABATIC_HEATING_ATTENNUATED,
+                           TARGET_FIELD_HORIZONTAL_WIND,
+                           TARGET_FIELD_SIGMA_PARAMETER,
+                           TARGET_FIELD_VORTICITY),
+                       .recipe = compute_omega_component},
 
             [TARGET_FIELD_MU_INV] =
                 (Rule){.prerequisites = 0,
@@ -69,7 +85,7 @@ Rules new_rules (void) {
             [TARGET_FIELD_SURFACE_ATTENNUATION] =
                 (Rule){.prerequisites =
                            new_target_list (TARGET_FIELD_SURFACE_PRESSURE),
-                       .recipe = compute_surface_attennuation},
+                       .recipe = compute_surface_attennuation_factors},
 
             [TARGET_FIELD_VORTICITY] = (Rule){.prerequisites = new_target_list (
                                                   TARGET_FIELD_HORIZONTAL_WIND),
@@ -169,17 +185,18 @@ void print_target_list (
     info ("\n");
 }
 
-static void
-compute_diabatic_heating (TARGET id, Targets *targets, Context *ctx) {
+static void compute_diabatic_heating (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     diabatic_heating (ctx, ctx->ncid, targets->target[id].time);
 }
 
-static void compute_friction (TARGET id, Targets *targets, Context *ctx) {
+static void compute_friction (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     friction (ctx, ctx->ncid, targets->target[id].time);
 }
 
-static void
-compute_omega_component (TARGET id, Targets *targets, Context *ctx) {
+static void compute_omega_component (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     KSPSetComputeOperators (ctx->ksp, omega_compute_operator, ctx);
 
     switch (id) {
@@ -193,8 +210,8 @@ compute_omega_component (TARGET id, Targets *targets, Context *ctx) {
     }
 }
 
-static void
-compute_horizontal_wind_etc (TARGET id, Targets *targets, Context *ctx) {
+static void compute_horizontal_wind_etc (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     static Vec Vnext    = 0;
     static Vec zetanext = 0;
 
@@ -221,8 +238,8 @@ compute_horizontal_wind_etc (TARGET id, Targets *targets, Context *ctx) {
     }
 }
 
-static void
-compute_temperature_and_tendency (TARGET id, Targets *targets, Context *ctx) {
+static void compute_temperature_and_tendency (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     static Vec Tnext = 0;
 
     if (!Tnext) {    // The first step
@@ -246,29 +263,42 @@ compute_temperature_and_tendency (TARGET id, Targets *targets, Context *ctx) {
 }
 
 static void compute_one_over_dry_air_mass_column (
-    TARGET id, Targets *targets, Context *ctx) {
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     one_over_dry_air_mass_column (ctx->ncid, targets->target[id].time, ctx);
 }
 
-static void
-compute_sigma_parameter (TARGET id, Targets *targets, Context *ctx) {
+static void compute_sigma_parameter (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     sigma_parameter (
         ctx->da, ctx->mz, ctx->Pressure, ctx->Temperature,
         ctx->Sigma_parameter);
 }
 
-static void
-compute_surface_attennuation (TARGET id, Targets *targets, Context *ctx) {
-    mul_fact ( ctx, ctx->Surface_attennuation );
+static void compute_surface_attennuation_factors (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
+    mul_fact (ctx, ctx->Surface_attennuation);
 }
 
-static void read_field_2d (TARGET id, Targets *targets, Context *ctx) {
+static void compute_surface_attennuation (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
+    info (
+        "Computing attennuation %zu, %zu\n", id,
+        rules->rule[id].prerequisites->this);
+    Vec y = targets->target[rules->rule[id].prerequisites->this].field.vec;
+    Vec x = ctx->Surface_attennuation;
+    Vec w = targets->target[id].field.vec;
+    VecPointwiseMult (w, x, y);
+}
+
+static void
+read_field_2d (TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     read2D (
         ctx->ncid, targets->target[id].time, targets->target[id].field.name,
         ctx->Surface_pressure);
 }
 
-static void read_field_3d (TARGET id, Targets *targets, Context *ctx) {
+static void
+read_field_3d (TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
     file_read_3d (
         ctx->ncid, targets->target[id].time, targets->target[id].field.name,
         targets->target[id].field.vec);
@@ -303,13 +333,14 @@ void recipe (RULE id, Rules *rules) {
 */
 
 void update (TARGET id, const Rules *rules, Targets *targets, Context *ctx) {
-    Target *target = &targets->target[id];
+    Target *    target = &targets->target[id];
+    const Rule *rule   = &rules->rule[id];
     target->time++;
     switch (target->type) {
     case TARGET_TYPE_FIELD: {
-        if (rules->rule[id].recipe) {
+        if (rule->recipe) {
             info ("Computing %s[%zu]\n", target->field.name, target->time);
-            rules->rule[id].recipe (id, targets, ctx);
+            rules->rule[id].recipe (id, targets, rules, ctx);
         }
         if (target->field.write) {
             write3D (

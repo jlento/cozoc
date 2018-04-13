@@ -19,6 +19,7 @@ struct Context {
     PetscScalar *Pressure;
     PetscScalar *Coriolis_parameter;
     Vec          Diabatic_heating;
+    Vec          Diabatic_heating_attennuated;
     Vec          Friction;
     Vec          Geopotential_height;
     Vec          Horizontal_wind;

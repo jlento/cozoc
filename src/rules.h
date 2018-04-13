@@ -8,7 +8,7 @@ typedef struct Rules Rules;
 
 struct Rule {
     TARGETS *prerequisites;
-    void (*recipe) (TARGET, Targets *, Context *);
+    void (*recipe) (TARGET, Targets *, const Rules *, Context *);
 };
 
 struct Rules {

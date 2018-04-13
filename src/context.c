@@ -54,6 +54,7 @@ Context new_context (Options const options, Files const files) {
     VecDuplicate (ctx.Temperature, &ctx.Vorticity);
     VecDuplicate (ctx.Temperature, &ctx.Geopotential_height);
     VecDuplicate (ctx.Temperature, &ctx.Diabatic_heating);
+    VecDuplicate (ctx.Temperature, &ctx.Diabatic_heating_attennuated);
     VecDuplicate (ctx.Temperature, &ctx.Temperature_tendency);
     VecDuplicate (ctx.Temperature, &ctx.Vorticity_tendency);
     for (size_t i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++) {
