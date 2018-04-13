@@ -335,7 +335,7 @@ int plaplace (Vec inout, Context* ctx) {
     DMRestoreLocalVector (da, &Vvec);
 
     return (0); }
-/*
+
 int mul_fact (Context* ctx, Vec s) {
 
     DM           da      = ctx->da;
@@ -349,7 +349,7 @@ int mul_fact (Context* ctx, Vec s) {
     DMDAGetCorners (da, &xs, &ys, &zs, &xm, &ym, &zm);
 
     DMDAVecGetArray (da, s, &sa);
-    DMDAVecGetArray (daxy, PSFCVec, &psfc);
+    DMDAVecGetArrayRead (daxy, PSFCVec, &psfc);
 
     for (k = 1; k < (int) ctx->mz - 1; k++) {
         for (j = ys; j < ys + ym; j++) {
@@ -380,10 +380,12 @@ int mul_fact (Context* ctx, Vec s) {
             else {
                 sa[k][j][i] = 1.0; } } }
 
-    DMDAVecRestoreArray (daxy, PSFCVec, &psfc);
+    DMDAVecRestoreArrayRead (daxy, PSFCVec, &psfc);
     DMDAVecRestoreArray (da, s, &sa);
     return (0); }
 
+
+/*
 int ellipticity_sigma_vorticity (
     Context*     ctx,
     size_t       mz,

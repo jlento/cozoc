@@ -28,6 +28,7 @@ struct Context {
     Vec          Temperature_tendency;
     Vec          Sigma_parameter;
     Vec          Surface_pressure;
+    Vec          Surface_attennuation;
     Vec          Vorticity;
     Vec          Vorticity_tendency;
 };

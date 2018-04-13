@@ -50,6 +50,7 @@ Context new_context (Options const options, Files const files) {
 
     DMCreateGlobalVector (ctx.da, &ctx.Temperature);
     VecDuplicate (ctx.Temperature, &ctx.Sigma_parameter);
+    VecDuplicate (ctx.Temperature, &ctx.Surface_attennuation);
     VecDuplicate (ctx.Temperature, &ctx.Vorticity);
     VecDuplicate (ctx.Temperature, &ctx.Geopotential_height);
     VecDuplicate (ctx.Temperature, &ctx.Diabatic_heating);
@@ -432,15 +433,17 @@ int diabatic_heating (Context *ctx, const int ncid, const int step) {
 
     DMDAVecGetArray (da, Q, &qa);
 
+    info("ALEV: ");
     for (int k = zs; k < zs + zm; k++) {
         PetscScalar alev = pow (p[k] / 100000.0, r / cp);
+        info("%g, ", alev);
 
         for (int j = ys; j < ys + ym; j++) {
             for (int i = xs; i < xs + xm; i++)
                 qa[k][j][i] *= alev;
         }
     }
-
+    info("\n");
     DMDAVecRestoreArray (da, Q, &qa);
 
     DMRestoreGlobalVector (da, &tmp3d);

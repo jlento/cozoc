@@ -28,8 +28,10 @@ int fpder (
     DM da, PetscInt mz, PetscScalar* f, PetscScalar* p, Vec bvec);
 
 int plaplace (Vec inout, Context* ctx);
-/*
+
 int mul_fact (Context* ctx, Vec s);
+
+/*
 
 int ellipticity_sigma_vorticity (
     Context*     ctx,

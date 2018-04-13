@@ -1,5 +1,5 @@
-#include "defs.h"
 #include "io.h"
+#include "defs.h"
 #include "omega.h"
 #include "omegaQG.h"
 #include <netcdf.h>
@@ -22,11 +22,11 @@ static bool file_exists (const char *filename) {
 
 static int io_nc_open_par (char const fname[PETSC_MAX_PATH_LEN]) {
     int ncid = -1;
+    info("Opening file!\n");
     if (file_exists (fname)) {
-        ERR (
-            nc_open_par (
-                fname, NC_MPIIO | NC_NETCDF4 | NC_WRITE, PETSC_COMM_WORLD,
-                MPI_INFO_NULL, &ncid));
+        ERR (nc_open_par (
+            fname, NC_MPIIO | NC_NETCDF4 | NC_WRITE, PETSC_COMM_WORLD,
+            MPI_INFO_NULL, &ncid));
     } else {
         SETERRABORT (
             PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
@@ -49,9 +49,11 @@ Files new_files (const Options *options) {
         .ncid_out  = ncidin,
         .name_out  = options->outfname,
         .grid_type = get_grid_type (options, ncidin),
-        .dimname = {[DIM_T] = "time", [DIM_Z] = "vlevs",
-                    [DIM_Y] = "south_north", [DIM_X] = "west_east"},
-        .dimsize = {[DIM_T] = file_get_dimsize (ncidin, "time"),
+        .dimname   = {[DIM_T] = "time",
+                    [DIM_Z] = "vlevs",
+                    [DIM_Y] = "south_north",
+                    [DIM_X] = "west_east"},
+        .dimsize   = {[DIM_T] = file_get_dimsize (ncidin, "time"),
                     [DIM_Z] = file_get_dimsize (ncidin, "vlevs"),
                     [DIM_Y] = file_get_dimsize (ncidin, "south_north"),
                     [DIM_X] = file_get_dimsize (ncidin, "west_east")}};
@@ -76,10 +78,9 @@ Files new_files (const Options *options) {
 
 PetscErrorCode file_open (const char *wrfin, int *ncid) {
     if (file_exists (wrfin)) {
-        ERR (
-            nc_open_par (
-                wrfin, NC_MPIIO | NC_NETCDF4 | NC_WRITE, PETSC_COMM_WORLD,
-                MPI_INFO_NULL, ncid));
+        ERR (nc_open_par (
+            wrfin, NC_MPIIO | NC_NETCDF4 | NC_WRITE, PETSC_COMM_WORLD,
+            MPI_INFO_NULL, ncid));
         return (0);
     } else {
         SETERRQ1 (
@@ -198,8 +199,8 @@ int write3D (
     count[1] = zm;
     count[2] = ym;
     count[3] = xm;
-    info("Writing variable %s.\n", varname);
-    ierr     = nc_inq_varid (ncid, varname, &id);
+    info ("Writing variable %s.\n", varname);
+    ierr = nc_inq_varid (ncid, varname, &id);
     ERR (ierr);
     ierr = nc_var_par_access (ncid, id, NC_COLLECTIVE);
     ERR (ierr);

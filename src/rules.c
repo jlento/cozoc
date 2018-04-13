@@ -4,6 +4,7 @@
 #include "fields.h"
 #include "omega.h"
 #include "operators.h"
+#include "ops.h"
 #include "targets.h"
 #include <petscerror.h>
 #include <petscksp.h>
@@ -12,12 +13,13 @@
 static void compute_diabatic_heating (TARGET, Targets *, Context *);
 static void compute_friction (TARGET, Targets *, Context *);
 static void compute_horizontal_wind_etc (TARGET, Targets *, Context *);
+static void compute_omega_component (TARGET, Targets *, Context *);
 static void compute_one_over_dry_air_mass_column (TARGET, Targets *, Context *);
 static void compute_temperature_and_tendency (TARGET, Targets *, Context *);
 static void compute_sigma_parameter (TARGET, Targets *, Context *);
+static void compute_surface_attennuation (TARGET, Targets *, Context *);
 static void read_field_2d (TARGET, Targets *, Context *);
 static void read_field_3d (TARGET, Targets *, Context *);
-static void compute_omega_component (TARGET, Targets *, Context *);
 
 Rules new_rules (void) {
     Rules rules = {{
@@ -63,6 +65,11 @@ Rules new_rules (void) {
 
             [TARGET_FIELD_SURFACE_PRESSURE] =
                 (Rule){.prerequisites = 0, .recipe = read_field_2d},
+
+            [TARGET_FIELD_SURFACE_ATTENNUATION] =
+                (Rule){.prerequisites =
+                           new_target_list (TARGET_FIELD_SURFACE_PRESSURE),
+                       .recipe = compute_surface_attennuation},
 
             [TARGET_FIELD_VORTICITY] = (Rule){.prerequisites = new_target_list (
                                                   TARGET_FIELD_HORIZONTAL_WIND),
@@ -164,8 +171,7 @@ void print_target_list (
 
 static void
 compute_diabatic_heating (TARGET id, Targets *targets, Context *ctx) {
-    diabatic_heating (
-        ctx, ctx->ncid, targets->target[id].time);
+    diabatic_heating (ctx, ctx->ncid, targets->target[id].time);
 }
 
 static void compute_friction (TARGET id, Targets *targets, Context *ctx) {
@@ -198,9 +204,9 @@ compute_horizontal_wind_etc (TARGET id, Targets *targets, Context *ctx) {
     }
 
     horizontal_wind_and_vorticity_and_vorticity_tendency (
-        ctx->ncid, targets->target[id].time, ctx->first,
-        ctx->mt, ctx->Time_coordinate, ctx->da, ctx->da2, ctx->my, ctx->hx,
-        ctx->hy, &ctx->Horizontal_wind, &Vnext, &ctx->Vorticity,
+        ctx->ncid, targets->target[id].time, ctx->first, ctx->mt,
+        ctx->Time_coordinate, ctx->da, ctx->da2, ctx->my, ctx->hx, ctx->hy,
+        &ctx->Horizontal_wind, &Vnext, &ctx->Vorticity,
         &ctx->Vorticity_tendency, &zetanext);
 
     if (targets->target[id].time == ctx->last) {
@@ -224,9 +230,9 @@ compute_temperature_and_tendency (TARGET id, Targets *targets, Context *ctx) {
     }
 
     temperature (
-        ctx->ncid, targets->target[id].time, ctx->first,
-        ctx->mt, ctx->Time_coordinate, &ctx->Temperature,
-        &ctx->Temperature_tendency, &Tnext);
+        ctx->ncid, targets->target[id].time, ctx->first, ctx->mt,
+        ctx->Time_coordinate, &ctx->Temperature, &ctx->Temperature_tendency,
+        &Tnext);
 
     if (targets->target[id].time == ctx->last) {
         PetscPrintf (
@@ -241,8 +247,7 @@ compute_temperature_and_tendency (TARGET id, Targets *targets, Context *ctx) {
 
 static void compute_one_over_dry_air_mass_column (
     TARGET id, Targets *targets, Context *ctx) {
-    one_over_dry_air_mass_column (
-        ctx->ncid, targets->target[id].time, ctx);
+    one_over_dry_air_mass_column (ctx->ncid, targets->target[id].time, ctx);
 }
 
 static void
@@ -252,16 +257,21 @@ compute_sigma_parameter (TARGET id, Targets *targets, Context *ctx) {
         ctx->Sigma_parameter);
 }
 
+static void
+compute_surface_attennuation (TARGET id, Targets *targets, Context *ctx) {
+    mul_fact ( ctx, ctx->Surface_attennuation );
+}
+
 static void read_field_2d (TARGET id, Targets *targets, Context *ctx) {
     read2D (
-        ctx->ncid, targets->target[id].time,
-        targets->target[id].field.name, ctx->Surface_pressure);
+        ctx->ncid, targets->target[id].time, targets->target[id].field.name,
+        ctx->Surface_pressure);
 }
 
 static void read_field_3d (TARGET id, Targets *targets, Context *ctx) {
     file_read_3d (
-        ctx->ncid, targets->target[id].time,
-        targets->target[id].field.name, targets->target[id].field.vec);
+        ctx->ncid, targets->target[id].time, targets->target[id].field.name,
+        targets->target[id].field.vec);
 }
 
 static void
@@ -301,10 +311,9 @@ void update (TARGET id, const Rules *rules, Targets *targets, Context *ctx) {
             info ("Computing %s[%zu]\n", target->field.name, target->time);
             rules->rule[id].recipe (id, targets, ctx);
         }
-        if (ctx->ncid && id == TARGET_FIELD_OMEGA_Q) {
+        if (target->field.write) {
             write3D (
-                ctx->ncid, target->time, target->field.name,
-                target->field.vec);
+                ctx->ncid, target->time, target->field.name, target->field.vec);
         }
         break;
     }

@@ -4,6 +4,7 @@
 #include "netcdf.h"
 #include "operators.h"
 #include "options.h"
+#include <stdbool.h>
 
 Targets new_targets (Options options, Files files, Context *ctx) {
     Targets targets = {
@@ -11,7 +12,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
 
                 [TARGET_FIELD_DIABATIC_HEATING] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.write       = false,
+                             .field = (Field){.write       = true,
                                               .name        = "Q",
                                               .description = "Diabatic heating",
                                               .units       = 0,
@@ -52,7 +53,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                         .field =
                             (Field){
                                 .write       = true,
-                                .name        = "ome_q",
+                                .name        = "cozoc_ome_q",
                                 .description = "Omega due to diabatic heating",
                                 .units       = "Pa s-1",
                                 .vec =
@@ -70,6 +71,18 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                                     .units = 0,
                                     .vec   = ctx->One_over_dry_air_mass_column},
                         .time = options.first - 1},
+
+                [TARGET_FIELD_SURFACE_ATTENNUATION] =
+                (Target){
+                    .type = TARGET_TYPE_FIELD,
+                    .field =
+                    (Field){.write = true,
+                            .name  = "ATTENNUATION",
+                            .description =
+                            "Pressure level surface attennuation",
+                            .units = 0,
+                            .vec   = ctx->Surface_attennuation},
+                    .time = options.first - 1},
 
                 [TARGET_FIELD_TEMPERATURE] =
                     (Target){.type  = TARGET_TYPE_FIELD,
