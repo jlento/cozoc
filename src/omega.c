@@ -240,14 +240,14 @@ extern PetscErrorCode omega_compute_rhs_F_Q (
 
     Context*    ctx = (Context*) ctx_p;
     DM          da  = ctx->da;
-    Vec         Q   = ctx->Diabatic_heating;
+    Vec         Qatt   = ctx->Diabatic_heating_attennuated;
     PetscScalar hx  = ctx->hx;
     PetscScalar hy  = ctx->hy;
     PetscScalar hz  = ctx->hz;
 //    Vec         s;
 
 //    DMGetGlobalVector(da, &s);
-    VecCopy (Q, b);
+    VecCopy (Qatt, b);
 //    mul_fact(ctx, s);
 //    VecPointwiseMult(b, s, b);
     plaplace (b, ctx);

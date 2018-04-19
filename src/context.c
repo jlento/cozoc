@@ -55,6 +55,7 @@ Context new_context (Options const options, Files const files) {
     VecDuplicate (ctx.Temperature, &ctx.Geopotential_height);
     VecDuplicate (ctx.Temperature, &ctx.Diabatic_heating);
     VecDuplicate (ctx.Temperature, &ctx.Diabatic_heating_attennuated);
+    VecDuplicate (ctx.Temperature, &ctx.Diabatic_heating_forcing);
     VecDuplicate (ctx.Temperature, &ctx.Temperature_tendency);
     VecDuplicate (ctx.Temperature, &ctx.Vorticity_tendency);
     for (size_t i = 0; i < NUM_GENERALIZED_OMEGA_COMPONENTS; i++) {
@@ -72,8 +73,7 @@ Context new_context (Options const options, Files const files) {
         size_t start[1] = {0};
         size_t count[1] = {ctx.mt};
         file_read_array_double (
-            ncid, "XTIME", start, count,
-            ctx.Time_coordinate);
+            ncid, "XTIME", start, count, ctx.Time_coordinate);
 
         for (int i = 0; i < (int)ctx.mt; i++)
             ctx.Time_coordinate[i] *= (double)60;
@@ -83,8 +83,7 @@ Context new_context (Options const options, Files const files) {
     {
         size_t start[1] = {0};
         size_t count[1] = {ctx.mz};
-        file_read_array_double (
-            ncid, "LEV", start, count, ctx.Pressure);
+        file_read_array_double (ncid, "LEV", start, count, ctx.Pressure);
     }
 
     /* Coriollis parameter is taken to be a function of latitude, only
@@ -116,50 +115,68 @@ Vec new_vec (Context *ctx) {
 }
 
 int temperature (
-    int ncid, size_t step, size_t first, size_t mt, double *t, Vec *T,
-    Vec *Ttend, Vec *Tnext) {
+    int ncid, size_t step, size_t first, size_t mt, double *t, Vec T,
+    Vec Ttend, Context *ctx) {
 
-    Vec tmpvec;
+    static Vec tmpvec   = 0;
+    static Vec Tnext    = 0;
+    static Vec Tprev    = 0;
+
+    if (!Tnext) {    // The first step
+        VecDuplicate (ctx->Temperature, &Tnext);
+        VecDuplicate (ctx->Temperature, &Tprev);
+        VecDuplicate (ctx->Temperature, &tmpvec);
+    }
 
     if (step == first) {
         if (first == 0) {
-            file_read_3d (ncid, step, "TT", *T);
-            file_read_3d (ncid, step + 1, "TT", *Tnext);
-            VecCopy (*T, *Ttend);
-            VecAXPY (*Ttend, -1.0, *Tnext);
-            VecScale (*Ttend, -1.0 / (double)(t[step + 1] - t[step]));
+            file_read_3d (ncid, step, "TT", T);
+            file_read_3d (ncid, step + 1, "TT", Tnext);
+
+            VecCopy (T, Ttend);
+            VecAXPY (Ttend, -1.0, Tnext);
+            VecScale (Ttend, -1.0 / (double)(t[step + 1] - t[step]));
         } else {
-            file_read_3d (ncid, step - 1, "TT", *Ttend);
-            file_read_3d (ncid, step, "TT", *T);
-            file_read_3d (ncid, step + 1, "TT", *Tnext);
-            VecAXPY (*Ttend, -1.0, *Tnext);
-            VecScale (*Ttend, -1.0 / (double)(t[step + 1] - t[step - 1]));
+            file_read_3d (ncid, step - 1, "TT", Tprev);
+            file_read_3d (ncid, step, "TT", T);
+            file_read_3d (ncid, step + 1, "TT", Tnext);
+
+            VecCopy (Tprev, Ttend);
+            VecAXPY (Ttend, -1.0, Tnext);
+            VecScale (Ttend, -1.0 / (double)(t[step + 1] - t[step - 1]));
         }
     } else {
         if (step == mt - 1) {
-            *Ttend = *T;
-            *T     = *Tnext;
-            VecAXPY (*Ttend, -1.0, *T);
-            VecScale (*Ttend, -1.0 / (double)(t[step] - t[step - 1]));
+            VecCopy (T, Tprev);
+            VecCopy (Tnext, T);
+
+            VecCopy (Tprev, Ttend);
+            VecAXPY (Ttend, -1.0, T);
+            VecScale (Ttend, -1.0 / (double)(t[step] - t[step - 1]));
         } else {
-            tmpvec = *Ttend;
-            *Ttend = *T;
-            *T     = *Tnext;
-            *Tnext = tmpvec;
-            file_read_3d (ncid, step + 1, "TT", *Tnext);
-            VecAXPY (*Ttend, -1.0, *Tnext);
-            VecScale (*Ttend, -1.0 / (double)(t[step + 1] - t[step - 1]));
+            VecCopy (T, Tprev);
+            VecCopy (Tnext, T);
+            file_read_3d (ncid, step + 1, "TT", Tnext);
+
+            VecCopy (Tprev, Ttend);
+            VecAXPY (Ttend, -1.0, Tnext);
+            VecScale (Ttend, -1.0 / (double)(t[step + 1] - t[step - 1]));
         }
     }
 
+    if (step == ctx->last) {
+        VecDestroy (&tmpvec);
+        VecDestroy (&Tprev);
+        VecDestroy (&Tnext);
+    }
     return (0);
 }
-/*
-static int sigma_parameter (
+
+int sigma_parameter (
     DM da, PetscInt mz, PetscScalar *p, Vec Tvec, Vec sigmavec) {
-    const double R = Specific_gas_constant_of_dry_air;
-    const double c_p = Specific_heat_of_dry_air;
-    PetscInt zs, ys, xs, zm, ym, xm;
+    const double   R   = Specific_gas_constant_of_dry_air;
+    const double   c_p = Specific_heat_of_dry_air;
+    PetscInt       zs, ys, xs, zm, ym, xm;
     PetscScalar ***T;
     PetscScalar ***sigma;
 
@@ -194,8 +211,8 @@ static int sigma_parameter (
 
     return (0);
 }
-*/
 
+/*
 int sigma_parameter (
     DM da, PetscInt mz, PetscScalar *p, Vec Tvec, Vec sigmavec) {
     const double   R   = Specific_gas_constant_of_dry_air;
@@ -204,11 +221,11 @@ int sigma_parameter (
     PetscScalar ***T;
     PetscScalar ***sigma;
 
-    /* first sigma holds auxiliary variable dT/dp, temporarily */
+    // first sigma holds auxiliary variable dT/dp, temporarily
     VecCopy (Tvec, sigmavec);
     fpder (da, mz, NULL, p, sigmavec);
 
-    /* Calculating sigma --- sigma on rhs is "dT/dp" */
+    // Calculating sigma --- sigma on rhs is "dT/dp"
     DMDAVecGetArrayRead (da, Tvec, &T);
     DMDAVecGetArray (da, sigmavec, &sigma);
 
@@ -220,8 +237,8 @@ int sigma_parameter (
                 sigma[k][j][i] =
                     R / p[k] * (R / c_p * T[k][j][i] / p[k] - sigma[k][j][i]);
 
-                if (sigma[k][j][i] < sigmamin)
-                    sigma[k][j][i] = sigmamin;
+                //if (sigma[k][j][i] < sigmamin)
+                //  sigma[k][j][i] = sigmamin;
             }
         }
     }
@@ -231,6 +248,7 @@ int sigma_parameter (
 
     return (0);
 }
+*/
 
 /*
 static int horizontal_wind_and_vorticity (const int ncid, const int step, DM da,
@@ -320,52 +338,75 @@ static int horizontal_wind_and_vorticity (
 
 int horizontal_wind_and_vorticity_and_vorticity_tendency (
     int ncid, size_t step, size_t first, size_t mt, double *t, DM da, DM da2,
-    size_t my, PetscScalar hx, PetscScalar hy, Vec *V, Vec *Vnext, Vec *zeta,
-    Vec *zetatend, Vec *zetanext) {
+    size_t my, PetscScalar hx, PetscScalar hy, Vec V, Vec zeta, Vec zetatend,
+    Context *ctx) {
 
-    Vec tmpvec;
+    static Vec tmpvec   = 0;
+    static Vec Vnext    = 0;
+    static Vec Vprev    = 0;
+    static Vec zetanext = 0;
+    static Vec zetaprev = 0;
+
+    if (!Vnext) {    // The first step
+        VecDuplicate (ctx->Horizontal_wind, &Vnext);
+        VecDuplicate (ctx->Horizontal_wind, &Vprev);
+        VecDuplicate (ctx->Vorticity, &zetanext);
+        VecDuplicate (ctx->Vorticity, &zetaprev);
+        VecDuplicate (ctx->Vorticity, &tmpvec);
+    }
 
     if (step == first) {
         if (first == 0) {
-            tmpvec = *zetatend;
             horizontal_wind_and_vorticity (
-                ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
+                ncid, step, da, da2, my, hx, hy, tmpvec, V, zeta);
             horizontal_wind_and_vorticity (
-                ncid, step + 1, da, da2, my, hx, hy, tmpvec, *Vnext, *zetanext);
-            VecCopy (*zeta, *zetatend);
-            VecAXPY (*zetatend, -1.0, *zetanext);
-            VecScale (*zetatend, -1.0 / (double)(t[step + 1] - t[step]));
+                ncid, step + 1, da, da2, my, hx, hy, tmpvec, Vnext, zetanext);
+
+            VecCopy (zeta, zetatend);
+            VecAXPY (zetatend, -1.0, zetanext);
+            VecScale (zetatend, -1.0 / (double)(t[step + 1] - t[step]));
         } else {
-            tmpvec = *zetatend;
             horizontal_wind_and_vorticity (
-                ncid, step, da, da2, my, hx, hy, tmpvec, *V, *zeta);
+                ncid, step - 1, da, da2, my, hx, hy, tmpvec, Vprev, zetaprev);
             horizontal_wind_and_vorticity (
-                ncid, step + 1, da, da2, my, hx, hy, tmpvec, *Vnext, *zetanext);
+                ncid, step, da, da2, my, hx, hy, tmpvec, V, zeta);
             horizontal_wind_and_vorticity (
-                ncid, step - 1, da, da2, my, hx, hy, tmpvec, *V, *zetatend);
-            VecAXPY (*zetatend, -1.0, *zetanext);
-            VecScale (*zetatend, -1.0 / (double)(t[step + 1] - t[step - 1]));
+                ncid, step + 1, da, da2, my, hx, hy, tmpvec, Vnext, zetanext);
+
+            VecCopy (zetaprev, zetatend);
+            VecAXPY (zetatend, -1.0, zetanext);
+            VecScale (zetatend, -1.0 / (double)(t[step + 1] - t[step - 1]));
         }
     } else {
         if (step == mt - 1) {
-            *V        = *Vnext;
-            *zetatend = *zeta;
-            *zeta     = *zetanext;
-            VecAXPY (*zetatend, -1.0, *zeta);
-            VecScale (*zetatend, -1.0 / (double)(t[step] - t[step - 1]));
+            VecCopy (V, Vprev);
+            VecCopy (Vnext, V);
+            VecCopy (zeta, zetaprev);
+            VecCopy (zetanext, zeta);
+
+            VecCopy (zetaprev, zetatend);
+            VecAXPY (zetatend, -1.0, zeta);
+            VecScale (zetatend, -1.0 / (double)(t[step] - t[step - 1]));
         } else {
-            tmpvec    = *V;
-            *V        = *Vnext;
-            *Vnext    = tmpvec;
-            tmpvec    = *zetatend;
-            *zetatend = *zeta;
-            *zeta     = *zetanext;
-            *zetanext = tmpvec;
+            VecCopy (V, Vprev);
+            VecCopy (Vnext, V);
+            VecCopy (zeta, zetaprev);
+            VecCopy (zetanext, zeta);
             horizontal_wind_and_vorticity (
-                ncid, step + 1, da, da2, my, hx, hy, tmpvec, *Vnext, *zetanext);
-            VecAXPY (*zetatend, -1.0, *zetanext);
-            VecScale (*zetatend, -1.0 / (double)(t[step + 1] - t[step - 1]));
+                ncid, step + 1, da, da2, my, hx, hy, tmpvec, Vnext, zetanext);
+
+            VecCopy (zetaprev, zetatend);
+            VecAXPY (zetatend, -1.0, zetanext);
+            VecScale (zetatend, -1.0 / (double)(t[step + 1] - t[step - 1]));
         }
+    }
+
+    if (step == ctx->last) {
+        VecDestroy (&tmpvec);
+        VecDestroy (&Vprev);
+        VecDestroy (&Vnext);
+        VecDestroy (&zetaprev);
+        VecDestroy (&zetanext);
     }
 
     return (0);
@@ -434,17 +475,17 @@ int diabatic_heating (Context *ctx, const int ncid, const int step) {
 
     DMDAVecGetArray (da, Q, &qa);
 
-    info("ALEV: ");
+    info ("ALEV: ");
     for (int k = zs; k < zs + zm; k++) {
         PetscScalar alev = pow (p[k] / 100000.0, r / cp);
-        info("%g, ", alev);
+        info ("%g, ", alev);
 
         for (int j = ys; j < ys + ym; j++) {
             for (int i = xs; i < xs + xm; i++)
                 qa[k][j][i] *= alev;
         }
     }
-    info("\n");
+    info ("\n");
     DMDAVecRestoreArray (da, Q, &qa);
 
     DMRestoreGlobalVector (da, &tmp3d);
@@ -601,46 +642,25 @@ void update_context (size_t step, Files ncfile, Context *ctx) {
     PetscScalar *p        = ctx->Pressure;
     Vec          psfc     = ctx->Surface_pressure;
     Vec          Z        = ctx->Geopotential_height;
-    Vec *        T        = &ctx->Temperature;
-    Vec *        Ttend    = &ctx->Temperature_tendency;
+    Vec         T        = ctx->Temperature;
+    Vec         Ttend    = ctx->Temperature_tendency;
     Vec          sigma    = ctx->Sigma_parameter;
-    Vec *        V        = &ctx->Horizontal_wind;
-    Vec *        zeta     = &ctx->Vorticity;
-    Vec *        zetatend = &ctx->Vorticity_tendency;
-
-    static Vec Tnext    = 0;
-    static Vec Vnext    = 0;
-    static Vec zetanext = 0;
+    Vec          V        = ctx->Horizontal_wind;
+    Vec          zeta     = ctx->Vorticity;
+    Vec          zetatend = ctx->Vorticity_tendency;
 
     const int ncid = ctx->ncid;
 
-    if (step == ctx->first) {    // The first step
-        VecDuplicate (*T, &Tnext);
-        VecDuplicate (*V, &Vnext);
-        VecDuplicate (*zeta, &zetanext);
-    }
-
     read2D (ncid, step, "PSFC", psfc);
     file_read_3d (ncid, step, "GHT", Z);
-    temperature (ncid, step, ctx->first, mt, time, T, Ttend, &Tnext);
-    sigma_parameter (da, mz, p, *T, sigma);
+    temperature (ncid, step, ctx->first, mt, time, T, Ttend, ctx);
+    sigma_parameter (da, mz, p, T, sigma);
     horizontal_wind_and_vorticity_and_vorticity_tendency (
-        ncid, step, ctx->first, mt, time, da, da2, my, hx, hy, V, &Vnext, zeta,
-        zetatend, &zetanext);
+        ncid, step, ctx->first, mt, time, da, da2, my, hx, hy, V, zeta,
+        zetatend, ctx);
     one_over_dry_air_mass_column (ncid, step, ctx);
     diabatic_heating (ctx, ncid, step);
     friction (ctx, ncid, step);
-
-    if (step == ctx->last) {
-        PetscPrintf (
-            PETSC_COMM_WORLD, "FIX: context_update fails to free vectors\n");
-        /*
-        VecDestroy (&Tnext);
-        VecDestroy (&Vnext);
-        VecDestroy (&zetanext);
-        DMRestoreGlobalVector (daxy, &mu_inv);
-        */
-    }
 }
 
 void free_context (Context *ctx) {

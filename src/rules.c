@@ -2,6 +2,7 @@
 #include "context.h"
 #include "equation.h"
 #include "fields.h"
+#include "io.h"
 #include "omega.h"
 #include "operators.h"
 #include "ops.h"
@@ -11,7 +12,9 @@
 #include <stdbool.h>
 
 static void
-            compute_diabatic_heating (TARGET, Targets *, const Rules *, Context *);
+compute_diabatic_heating (TARGET, Targets *, const Rules *, Context *);
+static void
+            compute_diabatic_heating_forcing (TARGET, Targets *, const Rules *, Context *);
 static void compute_friction (TARGET, Targets *, const Rules *, Context *);
 static void
 compute_horizontal_wind_etc (TARGET, Targets *, const Rules *, Context *);
@@ -41,6 +44,11 @@ Rules new_rules (void) {
                            TARGET_FIELD_SURFACE_ATTENNUATION,
                            TARGET_FIELD_DIABATIC_HEATING),
                        .recipe = compute_surface_attennuation},
+
+            [TARGET_FIELD_DIABATIC_HEATING_FORCING] =
+                (Rule){.prerequisites = new_target_list (
+                           TARGET_FIELD_DIABATIC_HEATING_ATTENNUATED),
+                       .recipe = compute_diabatic_heating_forcing},
 
             [TARGET_FIELD_FRICTION] =
                 (Rule){.prerequisites = new_target_list (TARGET_FIELD_MU_INV),
@@ -212,30 +220,10 @@ static void compute_omega_component (
 
 static void compute_horizontal_wind_etc (
     TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
-    static Vec Vnext    = 0;
-    static Vec zetanext = 0;
-
-    if (!Vnext) {    // The first step
-        VecDuplicate (ctx->Horizontal_wind, &Vnext);
-        VecDuplicate (ctx->Vorticity, &zetanext);
-    }
-
     horizontal_wind_and_vorticity_and_vorticity_tendency (
         ctx->ncid, targets->target[id].time, ctx->first, ctx->mt,
         ctx->Time_coordinate, ctx->da, ctx->da2, ctx->my, ctx->hx, ctx->hy,
-        &ctx->Horizontal_wind, &Vnext, &ctx->Vorticity,
-        &ctx->Vorticity_tendency, &zetanext);
-
-    if (targets->target[id].time == ctx->last) {
-        PetscPrintf (
-            PETSC_COMM_WORLD,
-            "FIX: compute_horizontal_wind_etc fails to free vectors\n");
-        /*
-        VecDestroy (&Vnext);
-        VecDestroy (&zetanext);
-        DMRestoreGlobalVector (daxy, &mu_inv);
-        */
-    }
+        ctx->Horizontal_wind, ctx->Vorticity, ctx->Vorticity_tendency, ctx);
 }
 
 static void compute_temperature_and_tendency (
@@ -248,17 +236,10 @@ static void compute_temperature_and_tendency (
 
     temperature (
         ctx->ncid, targets->target[id].time, ctx->first, ctx->mt,
-        ctx->Time_coordinate, &ctx->Temperature, &ctx->Temperature_tendency,
-        &Tnext);
+        ctx->Time_coordinate, ctx->Temperature, ctx->Temperature_tendency, ctx);
 
     if (targets->target[id].time == ctx->last) {
-        PetscPrintf (
-            PETSC_COMM_WORLD,
-            "FIX: compute_temperature fails to free vectors\n");
-        /*
         VecDestroy (&Tnext);
-        DMRestoreGlobalVector (daxy, &mu_inv);
-        */
     }
 }
 
@@ -288,6 +269,11 @@ static void compute_surface_attennuation (
     Vec x = ctx->Surface_attennuation;
     Vec w = targets->target[id].field.vec;
     VecPointwiseMult (w, x, y);
+}
+
+static void compute_diabatic_heating_forcing (
+    TARGET id, Targets *targets, const Rules *rules, Context *ctx) {
+    omega_compute_rhs_F_Q (ctx->ksp, ctx->Diabatic_heating_forcing, ctx);
 }
 
 static void

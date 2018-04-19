@@ -31,6 +31,18 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                                     .vec   = ctx->Diabatic_heating_attennuated},
                         .time = options.first - 1},
 
+                [TARGET_FIELD_DIABATIC_HEATING_FORCING] =
+                    (Target){
+                        .type = TARGET_TYPE_FIELD,
+                        .field =
+                            (Field){.write = true,
+                                    .name  = "cffdiab",
+                                    .description =
+                                        "Forcing due to diabatic heating",
+                                    .units = 0,
+                                    .vec   = ctx->Diabatic_heating_forcing},
+                        .time = options.first - 1},
+
                 [TARGET_FIELD_FRICTION] =
                     (Target){.type  = TARGET_TYPE_FIELD,
                              .field = (Field){.write       = false,
@@ -117,7 +129,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
 
                 [TARGET_FIELD_SIGMA_PARAMETER] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.write       = false,
+                             .field = (Field){.write       = true,
                                               .name        = "sigma",
                                               .description = "Sigma parameter",
                                               .units       = "",
@@ -135,7 +147,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
 
                 [TARGET_FIELD_VORTICITY] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.write       = false,
+                             .field = (Field){.write       = true,
                                               .name        = "zeta",
                                               .description = "Vorticity",
                                               .units       = "",
