@@ -244,6 +244,7 @@ extern PetscErrorCode omega_compute_rhs_F_Q (
     PetscScalar hx  = ctx->hx;
     PetscScalar hy  = ctx->hy;
     PetscScalar hz  = ctx->hz;
+    //PetscScalar ***bb;
 //    Vec         s;
 
 //    DMGetGlobalVector(da, &s);
@@ -253,6 +254,17 @@ extern PetscErrorCode omega_compute_rhs_F_Q (
     plaplace (b, ctx);
     VecScale (b, -hx * hy * hz);
 
+    /*
+    DMDAVecGetArrayRead (da, b, &bb);
+    info("!!!!!!!Modified boundary conditions in omega_compute_F_Q() !!!!!!!!!!");
+    for (int k = 0; k < ctx->mz; k++ ) {
+        for (int i = 0; i < ctx->mx; i++ ) {
+            bb[k][0][i] = 0.0;
+            bb[k][ctx->my-1][i] = 0.0;
+        }
+    }
+    DMDAVecRestoreArrayRead (da, b, &bb);
+    */
     return (0); }
 
 
