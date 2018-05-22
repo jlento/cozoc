@@ -8,5 +8,7 @@ list (APPEND CMAKE_MODULE_PATH
 
 enable_testing()
 
+include(ExternalProject)
+
 add_subdirectory (src)
 add_subdirectory (test)

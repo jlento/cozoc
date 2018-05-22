@@ -1,20 +1,21 @@
 # COZOC
 
-Cozoc is parallel re-implementation of [OZO](https://github.com/mikarant/ozo).
+Cozoc is parallel re-implementation of [OZO](https://github.com/mikarant/ozo),
+described in the paper [OZO v.1.0](https://doi.org/10.5194/gmd-10-827-2017).
 
 
 ## Status
 
-- Computes the quasi-geostrophic omega equation and the generalized
-  omega equation
+- Computes the diabatic heating component of the generalize omega equation
 - very much under construction...
 
 
 ## Obtaining COZOC source
 
-Clone the COZOC GitHub repository:
+Clone the COZOC GitHub repository, with for example:
 
-    git clone https://jlento@bitbucket.org/jlento/cozoc.git
+    mkdir -p ~/github
+    git clone https://jlento@bitbucket.org/jlento/cozoc.git ~/github/cozoc
 
 
 ## COZOC requirements
@@ -27,7 +28,8 @@ libraries:
 - HDF5 (parallel)
 - NetCDF4/HDF5 (parallel)
 
-## Setting up the environment for COZOC using conda package manager
+
+### (WORK IN PROGRESS, DOES NOT WORK PROPERLY, YET!!!") Setting up the environment for COZOC using conda package manager
 
 After cloning the cozoc repository, install the requirements and development
 tools by running
@@ -50,63 +52,44 @@ If everything went fine, one should be able to build and test cozoc with
     make check
     
 
-## Setting up the environment for COZOC in Ubuntu 16.04 LTS virtual machine
+### Setting up the environment for COZOC in Ubuntu 16.04 LTS
 
-An alternate to using conda is to install the dependencies on the host machine
-directly using the package manager provided by the OS, or in a virtual machine.
-For virtual machine installs, install Git, VirtualBox and Vagrant on your laptop
-(the host machine). Then:
-
-    vagrant up
-
-The first boot of the virtual machine takes a while. After the dust
-has settled, you should have Ubuntu 16.04 LTS virtual machine running
-in the background, with most of the packages necessary for testing and
-developing COZOC already installed. See files [Vagrantfile](Vagrantfile)
-and [playbook.yml](playbook.yml).
-
-Login to the virtual machine with
-
-    vagrant ssh -- -Y
-
-The `cozoc` source directory in the host machine is shared with the
-virtual machine. In the virtual machine it is visible as a directory
-`/vagrant`.
-
-It is a good practice to have separate source and build directories
-(out-of-source builds). Let's create a build directory and continue in it,
-with for example,
-
-    mkdir $HOME/build
-    cd $_
+The file [playbook.yml](playbook.yml) should give a good idea which additional
+packages need to be present.
 
 At the time of writing, Ubuntu/Debian does have a package for the parallel
-version of HDF5, but not for NetCDF4, which needs to be compiled separately
-from the sources. If parallel version of NetCDF4/HDF5 library needs to be
-build from the sources, you can use the provided [netcdf4.bash](netcdf4.bash)
-script:
+version of HDF5, but not for NetCDF4, which needs to be compiled separately from
+the sources. If parallel version of NetCDF4/HDF5 library needs to be build from
+the sources, you can use the provided [netcdf4.bash](netcdf4.bash) script, for
+example:
 
-    bash /vagrant/netcdf4.bash
+    mkdir -p ~/thirdparty
+    INSTALLDIR=~/thirdparty bash thirdparty/build-netcdf4.sh
 
 
 ## Configure COZOC using CMake
 
+COZOC build is configured using CMake.
+
+It is a good practice to have separate source and build directories
+(out-of-source builds). Let's create a build directory and continue in it, with
+for example,
+
+    mkdir $HOME/build
+    cd $_
+
+
 ### In Ubuntu 16.04 LTS
 
-COZOC build is configured using CMake. In the provided virtual machine,
-with the NetCDF4 library build from sources as described above,
+Run cmake in the build directory, with for example
 
-    cmake /vagrant
+    cmake .. -DCMAKE_INSTALL_PREFIX=$PWD \
+             -DCMAKE_PREFIX_PATH=~/thirdparty
 
-command in the build directory should configure COZOC automatically.
+The CMake variable `CMAKE_INSTALL_PREFIX` sets the install root, and
+`CMAKE_PREFIX_PATH` helps cmake to find libraries that are not in the standard
+system directories.
 
-If cmake cannot auto-detect the location of the PETSc or NetCDF4 libraries,
-you can set environment variables `PETSC_DIR` or `NETCDF_DIR`, to give cmake
-a hint where to search for the libraries. For example,
-
-    NETCDF_DIR=$HOME/my-netcdf cmake -DCMAKE_INSTALL_PREFIX=$PWD ..
-
-The CMake variable `CMAKE_INSTALL_PREFIX` sets the install root.
 
 ### In Cray XC40
 
@@ -144,7 +127,41 @@ After CMake configuration, just type
 to build COZOC. In case of troubles, first try `make VERBOSE=1`.
 
 
+## Tests
+
+The provided tests serve as examples on how to use COZOC in general. To run just
+a single test, for example the quickest with simulated input file, run
+
+    make check-wrf-simulated
+
+The available tests can listed with
+
+    ctest -N
+    
+The whole test suite can be run with
+
+    ctest
+
+
+### WRF input data
+
+In order to run `check-wrf` test, 
+
+
 ## Preparing the input file
+
+Cozoc reads the input fields for the computation of the generalized omega
+equations (6) - (11) in [OZO v.1.0](https://doi.org/10.5194/gmd-10-827-2017)
+from a netcdf file. The definitions of the expected input fields in the netcdf
+file can be read from preprocessing scripts for different models in directory
+[preprocess](preprocess). We have chosen to keep the pre-processing of the model
+input data to separate.
+
+
+
+
+
+
 
 Currently COZOC can be used to analyse WRF simulations run on rectangular
 grid, such as the baroclinic wave test case. Before the WRF output can be
