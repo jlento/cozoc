@@ -12,12 +12,13 @@ readlink-f () {
     )
 }
 
-thisdir="$(dirname $(readlink-f ${BASH_SOURCE[0]}))"
+srcdir="$(dirname $(readlink-f ${BASH_SOURCE[0]}))"
 
 cd $WRF_ROOT/WRFV3/test/em_b_wave
 
+test -f iofield_list.txt || cp ${srcdir}/iofield_list.txt .
 test -f namelist.input.orig || cp namelist.input namelist.input.orig
-cp ${thisdir}/namelist.input .
+cp ${srcdir}/namelist.input .
 
 export WRFIO_NCD_LARGE_FILE_SUPPORT=1
 ./run_me_first.csh

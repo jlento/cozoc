@@ -1,5 +1,5 @@
  &time_control
- run_days                            = 10,
+ run_days                            = 06,
  run_hours                           = 0,
  run_minutes                         = 0,
  run_seconds                         = 0,
@@ -11,11 +11,11 @@
  start_second                        = 00,   00,   00,
  end_year                            = 0001, 0001, 0001,
  end_month                           = 01,   01,   01,
- end_day                             = 10,   05,   05,
+ end_day                             = 06,   05,   05,
  end_hour                            = 00,   00,   00,
  end_minute                          = 00,   00,   00,
  end_second                          = 00,   00,   00,
- history_interval                    = 360,  360,  360,
+ history_interval                    = 60,  360,  360,
  frames_per_outfile                  = 1000, 1000, 1000,
  restart                             = .false.,
  restart_interval                    = 3600,
@@ -24,6 +24,7 @@
  io_form_input                       = 2
  io_form_boundary                    = 2
  debug_level                         = 0
+ iofields_filename                   = "iofield_list.txt"
  /
 
  &domains
