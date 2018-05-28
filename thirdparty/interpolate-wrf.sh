@@ -35,7 +35,7 @@ echo "
   vert_coordinate = 'pres'
 /" > namelist.vinterp
 
-ncks -O -a -h -d Time,${first},${last} ../wrfout_d01_${simulation_start_date}:00:00 wrfout_d01_${interpolation_start_date}:00:00
+ncks -O -a -h -d Time,${first},${last} ../wrfout_d01_${simulation_start_date}:00:00 wrfout_d01_${simulation_start_date}:00:00
 
 rm -f wrfout_d01_${interpolation_start_date}:00:00_INTRP*
 $WRF_ROOT/wrf_interp/wrf_interp.exe
