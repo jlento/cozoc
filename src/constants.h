@@ -7,4 +7,6 @@ extern const double Specific_heat_of_dry_air;
 extern const double sigmamin;
 extern const double etamin;
 
+void print_backtrace(void);
+
 #endif /* CONSTANTS_H */

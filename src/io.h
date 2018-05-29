@@ -1,5 +1,6 @@
 #pragma once
 
+#include "constants.h"
 #include "grids.h"
 #include "netcdf.h"
 #include "options.h"
@@ -14,6 +15,7 @@
         fprintf (                                                              \
             stderr, "%s[%d]: %s: Error: %s\n", __FILE__, __LINE__, __func__,   \
             nc_strerror (e));                                                  \
+        print_backtrace ();                                                    \
         exit (ERRCODE);                                                        \
     }
 
@@ -24,19 +26,17 @@ typedef struct Dimension Dimension;
 
 struct Dimension {
     char   name[NC_MAX_NAME + 1];
-    size_t size;
-};
+    size_t size; };
 
 typedef struct Files Files;
 struct Files {
-    int ncid_in;
-    int ncid_out;
+    int         ncid_in;
+    int         ncid_out;
     const char *name_in;
     const char *name_out;
-    GRIDTYPE grid_type;
-    char dimname[NUM_DIM][NC_MAX_NAME + 1];
-    size_t dimsize[NUM_DIM];
-};
+    GRIDTYPE    grid_type;
+    char        dimname[NUM_DIM][NC_MAX_NAME + 1];
+    size_t      dimsize[NUM_DIM]; };
 
 Files new_files (const Options *);
 void  close_files (const Files);
