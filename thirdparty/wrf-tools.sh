@@ -1,9 +1,6 @@
 #!/bin/bash
 
-set -ex
-
 # Tested in Ubuntu 16.04
-
 
 # Tools
 NCKS=$(which ncks)
