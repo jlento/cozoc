@@ -15,9 +15,9 @@ infile=${4:?$usage}
 outfile=${5:?$usage}
 
 
-timeslice=$(nc-select-steps $first $last $infile)
+nc-select-steps $first $last $infile timeslice
 
-#wrf-interpolate $dp $timeslice
+wrf-interpolate $dp $timeslice
 
 wrf-fix-dimensions-etc ${timeslice}_INTRP ${outfile}
 

@@ -77,17 +77,21 @@ wrf-fix-dimensions-etc () {
 
     ${NCATTED} -O -a units,,d,, -a long_name,,d,, $tmpfile
 
-    attr='lev  "Pa"       "Pressure levels"
-          U    "m s**-1"  "U velocity"
-          V    "m s**-1"  "V velocity"
-          T    "K"        "Temperature"
-          Z    "m"        "Geopotential height"
-          PS   "hPa"      "Surface pressure"
-          Q    "K s**-1"  "Diabatic heating"
-          FU   "m s**-2"  "Frictional U-tendency"
-          FV   "m s**-2"  "Frictional U-tendency"'
+    attr=' lev,  Pa,        Pressure levels
+           U,    m s**-1,   U velocity
+           V,    m s**-1,   V velocity
+           T,    K,         Temperature
+           Z,    m,         Geopotential height
+           PS,   hPa,       Surface pressure
+           Q,    K s**-1,   Diabatic heating
+           FU,   m s**-2,   Frictional U-tendency
+           FV,   m s**-2,   Frictional U-tendency'
 
-    ${NCATTED} -O $(awk '{printf "-a units,%s,c,c,%s -a long_name,%s,c,c,%s\n", $1, $2, $1, $3}' <<<"$attr") $tmpfile
+
+    local params=$(awk -F ' *, *|^ *' '{printf "-a unit,%s,c,c,\"%s\" -a long_name,%s,c,c,\"%s\"\n", $2, $3, $2, $4}' <<<"$attr")
+    echo $params
+
+    eval ${NCATTED} -O $params $tmpfile
 
     #${NCATTED} -O -h -a history,global,d,, -a history_of_appended_files,global,d,, $tmpfile
     ${NCATTED} -O -h -a ,global,d,, $tmpfile
