@@ -12,7 +12,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
 
                 [TARGET_FIELD_DIABATIC_HEATING] =
                     (Target){.type  = TARGET_TYPE_FIELD,
-                             .field = (Field){.write       = true,
+                             .field = (Field){.write       = false,
                                               .name        = "Q",
                                               .description = "Diabatic heating",
                                               .units       = "K s**-1",
@@ -42,7 +42,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                                     .units = 0,
                                     .vec   = ctx->Diabatic_heating_forcing},
                         .time = options.first - 1},
-
+/*
                 [TARGET_FIELD_FRICTION] =
                     (Target){.type  = TARGET_TYPE_FIELD,
                              .field = (Field){.write       = false,
@@ -61,7 +61,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                                          .units       = 0,
                                          .vec = ctx->Geopotential_height},
                              .time = options.first - 1},
-
+*/
                 [TARGET_FIELD_HORIZONTAL_WIND] =
                     (Target){.type  = TARGET_TYPE_FIELD,
                              .field = (Field){.write       = false,
@@ -84,18 +84,6 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                                     ctx->omega[GENERALIZED_OMEGA_COMPONENT_Q]},
                         .time = options.first - 1},
 
-                [TARGET_FIELD_MU_INV] =
-                    (Target){
-                        .type = TARGET_TYPE_FIELD,
-                        .field =
-                            (Field){.write = false,
-                                    .name  = "mu_inv",
-                                    .description =
-                                        "One over dry air mass column",
-                                    .units = 0,
-                                    .vec   = ctx->One_over_dry_air_mass_column},
-                        .time = options.first - 1},
-
                 [TARGET_FIELD_SURFACE_ATTENNUATION] =
                     (Target){
                         .type = TARGET_TYPE_FIELD,
@@ -111,7 +99,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                 [TARGET_FIELD_TEMPERATURE] =
                     (Target){.type  = TARGET_TYPE_FIELD,
                              .field = (Field){.write       = false,
-                                              .name        = "TT",
+                                              .name        = "T",
                                               .description = "Temperature",
                                               .units       = "K",
                                               .vec         = 0},
@@ -139,7 +127,7 @@ Targets new_targets (Options options, Files files, Context *ctx) {
                 [TARGET_FIELD_SURFACE_PRESSURE] =
                     (Target){.type  = TARGET_TYPE_FIELD,
                              .field = (Field){.write       = false,
-                                              .name        = "PSFC",
+                                              .name        = "PS",
                                               .description = "Surface pressure",
                                               .units       = "",
                                               .vec = ctx->Surface_pressure},

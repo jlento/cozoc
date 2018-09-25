@@ -3,7 +3,6 @@
 Cozoc is parallel re-implementation of [OZO](https://github.com/mikarant/ozo),
 described in the paper [OZO v.1.0](https://doi.org/10.5194/gmd-10-827-2017).
 
-
 ## Status
 
 - Computes the diabatic heating component of the generalize omega equation
@@ -143,9 +142,11 @@ The whole test suite can be run with
     ctest
 
 
-### WRF input data
+### WRF baroclinic wave
 
-In order to run `check-wrf` test, 
+An example script to build WRF model is TODO
+
+
 
 
 ## Preparing the input file

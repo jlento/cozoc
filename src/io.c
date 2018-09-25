@@ -1,3 +1,4 @@
+#include "abortonerror.h"
 #include "defs.h"
 #include "io.h"
 #include "omega.h"
@@ -85,7 +86,8 @@ PetscErrorCode file_open (const char *wrfin, int *ncid) {
 
 void close_files (Files files) {
     ERR (nc_close (files.ncid_in) );
-    ERR (nc_close (files.ncid_out) ); }
+    if (files.ncid_in != files.ncid_out)
+        ERR (nc_close (files.ncid_out) ); }
 
 PetscInt file_get_dimsize (const int ncid, const char *dimname) {
     int    dimid;
@@ -97,21 +99,28 @@ PetscInt file_get_dimsize (const int ncid, const char *dimname) {
 PetscErrorCode
 file_def_var (const int ncid, const char *name, const Files *file) {
     int dimids[NUM_DIM];
+    int ierr;
 
     for (int i = 0; i < NUM_DIM; i++)
         ERR (nc_inq_dimid (ncid, file->dimname[i], &dimids[i]) );
 
-    ERR (nc_def_var (ncid, name, NC_FLOAT, NUM_DIM, dimids, 0) );
+    info("Defining variable %s\n", name);
+    ierr = nc_def_var (ncid, name, NC_FLOAT, NUM_DIM, dimids, 0);
+    if (ierr == -42)
+        info("ierr %d\n", ierr);
+    else
+        ERR(ierr);
     return (0); }
 
 PetscErrorCode
 file_read_attribute (const int ncid, const char *name, PetscScalar *attr) {
-    info ("Reading attribute %s\n", attr);
+    info ("Reading attribute %s\n", name);
     ERR (nc_get_att_double (ncid, NC_GLOBAL, name, attr) );
     return (0); }
 
 PetscErrorCode
 file_read_int_attribute (const int ncid, const char *name, PetscInt *attr) {
+    info ("Reading attribute %s\n", name);
     ERR (nc_get_att_int (ncid, NC_GLOBAL, name, attr) );
     return (0); }
 

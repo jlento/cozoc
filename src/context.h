@@ -14,7 +14,6 @@ struct Context {
     KSP          ksp;
     PetscInt     mx, my, mz, mt;    // Global grid sizes
     PetscScalar  hx, hy, hz;        // Grid spacings
-    int          cu_physics;
     double *     Time_coordinate;    // In seconds
     PetscScalar *Pressure;
     PetscScalar *Coriolis_parameter;

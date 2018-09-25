@@ -9,7 +9,7 @@ find_package (NETCDF REQUIRED)
 set (CMAKE_C_COMPILER ${MPI_C_COMPILER})
 
 set(CMAKE_C_FLAGS_DEBUG_GNU "\
--Wall -Wextra -pedantic -Wformat=2 -Wno-unused-parameter \
+-g -Wall -Wextra -pedantic -Wformat=2 -Wno-unused-parameter \
 -Wshadow -Wwrite-strings -Wstrict-prototypes -Wold-style-definition \
 -Wredundant-decls -Wnested-externs -Wmissing-include-dirs \
 -Wjump-misses-init -Wlogical-op -p\
